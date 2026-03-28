@@ -1,0 +1,2124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Номерные знаки</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@600;700&family=Roboto+Condensed:wght@400;700&display=swap');
+:root{
+  --bg:#111118;--surf:#1c1c28;--surf2:#252535;--border:#2e2e45;
+  --acc:#5b8dee;--acc2:#a06af8;--text:#eaeaf5;--muted:#7778a0;
+  --danger:#e05555;--success:#4caf75;--gold:#f5c842;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:'Roboto Condensed',sans-serif;min-height:100vh;padding-bottom:60px;overflow-x:hidden}
+
+/* ── HEADER ── */
+.hdr{background:linear-gradient(135deg,#131320,#1a1a2e);padding:10px 16px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between}
+.hdr-title{font-family:'Bebas Neue';font-size:18px;letter-spacing:3px;color:var(--acc)}
+.hdr-right{display:flex;align-items:center;gap:10px}
+.coins-badge{display:flex;align-items:center;gap:4px;background:rgba(245,200,66,.12);border:1px solid rgba(245,200,66,.3);border-radius:20px;padding:4px 10px}
+.coins-icon{font-size:14px}
+.coins-val{font-family:'Bebas Neue';font-size:16px;color:var(--gold);letter-spacing:1px}
+.luck-badge{display:flex;align-items:center;gap:4px;background:rgba(76,175,117,.12);border:1px solid rgba(76,175,117,.3);border-radius:20px;padding:4px 8px;font-size:11px;color:var(--success);font-weight:700}
+
+/* ── TABS ── */
+.ctabs{display:flex;gap:6px;padding:10px 12px 2px;overflow-x:auto;scrollbar-width:none}
+.ctabs::-webkit-scrollbar{display:none}
+.ctab{flex:1;min-width:66px;padding:6px 2px;background:var(--surf);border:1px solid var(--border);border-radius:10px;text-align:center;cursor:pointer;transition:all .2s;user-select:none}
+.ctab .fl{font-size:18px;display:block}
+.ctab .cn{font-size:9px;color:var(--muted);display:block;margin-top:1px;letter-spacing:.5px}
+.ctab.active{background:linear-gradient(135deg,var(--acc),var(--acc2));border-color:transparent;box-shadow:0 4px 14px rgba(91,141,238,.3)}
+.ctab.active .cn{color:#fff}
+
+/* ── PLATE WRAP ── */
+.plate-wrap{padding:14px 12px 4px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.region-sub{font-size:12px;color:var(--muted);letter-spacing:.3px;text-align:center;min-height:16px;transition:color .2s}
+.region-sub.ok{color:var(--success)}
+.region-sub.err{color:var(--danger)}
+
+/* ═══════════ PLATE SHELL ═══════════ */
+.plate{background:#fff;border:3px solid #1a1a1a;border-radius:7px;box-shadow:0 6px 24px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.9);font-family:'Rajdhani',sans-serif;font-weight:700;color:#111;display:flex;align-items:stretch;overflow:visible;position:relative}
+/* silicone frame upgrade */
+.plate.upg-silicone{outline:4px solid #222;outline-offset:2px;border-radius:8px}
+.plate.upg-silicone-red{outline:4px solid #cc0000;outline-offset:2px;border-radius:8px}
+.plate.upg-silicone-blue{outline:4px solid #003DA5;outline-offset:2px;border-radius:8px}
+.plate.upg-silicone-gold{outline:4px solid #f5c842;outline-offset:2px;border-radius:8px}
+/* plastic frame upgrade */
+.plate.upg-plastic .plate-frame-bar{display:flex}
+.plate-frame-bar{display:none;position:absolute;bottom:-18px;left:0;right:0;height:16px;border-radius:0 0 5px 5px;align-items:center;justify-content:center;font-size:9px;font-weight:700;letter-spacing:1px;color:#fff;background:#222}
+/* glow upgrade */
+.plate-glow{display:none;position:absolute;bottom:-8px;left:4px;right:4px;height:6px;border-radius:3px;filter:blur(3px)}
+.plate.upg-glow .plate-glow{display:block;animation:glowCycle 1.5s linear infinite}
+@keyframes glowCycle{0%{background:#e55}33%{background:#55e}66%{background:#5e5}100%{background:#e55}}
+/* shutter upgrade */
+.plate-shutter{display:none;position:absolute;inset:0;border-radius:4px;overflow:hidden;pointer-events:none}
+.plate.upg-shutter .plate-shutter{display:block}
+.shutter-l{position:absolute;top:0;bottom:0;left:0;width:0;background:#111;animation:shutterCloseL 2.2s ease-in-out infinite}
+.shutter-r{position:absolute;top:0;bottom:0;right:0;width:0;background:#111;animation:shutterCloseR 2.2s ease-in-out infinite}
+@keyframes shutterCloseL{0%,15%{width:0}55%,75%{width:50%}90%,100%{width:0}}
+@keyframes shutterCloseR{0%,15%{width:0}55%,75%{width:50%}90%,100%{width:0}}
+/* flip upgrade */
+.plate-flip-wrap{display:contents}
+.plate-flip-wrap.flipping{animation:flip360 .8s ease forwards}
+@keyframes flip360{0%{transform:rotateX(0)}25%{transform:rotateX(90deg)}75%{transform:rotateX(270deg)}100%{transform:rotateX(360deg)}}
+
+.dc{display:inline-flex;align-items:center;justify-content:center;position:relative;overflow:hidden;user-select:none;vertical-align:middle}
+.dc>span{color:#111;transition:color .25s}
+.plate.empty .dc>span{color:#bbb}
+.dc.spinning>span{display:inline-block;color:#111;animation:drumRoll .07s linear infinite}
+.dc.landing>span{display:inline-block;color:#111;animation:drumLand .18s cubic-bezier(.25,.46,.45,.94) forwards}
+@keyframes drumRoll{0%{transform:translateY(0);opacity:1}25%{transform:translateY(-8px);opacity:.4}50%{transform:translateY(0);opacity:1}75%{transform:translateY(8px);opacity:.4}100%{transform:translateY(0);opacity:1}}
+@keyframes drumLand{0%{transform:translateY(-12px);opacity:.3}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0);opacity:1}}
+
+/* ── RUSSIA ── */
+.plate-ru{width:100%;max-width:340px;height:72px}
+.ru-body{flex:1;display:flex;align-items:center;justify-content:center;padding:0 6px 0 10px;gap:2px}
+.ru-num-row{display:flex;align-items:center;gap:0;line-height:1}
+.ru-dc{height:58px;font-size:38px;min-width:28px;padding:0 1px}
+.ru-dc.letter{min-width:32px}
+.ru-sp{font-size:38px;color:#111;line-height:1;padding:0 2px;pointer-events:none}
+.ru-divider{width:2px;background:#111;align-self:stretch;margin:6px 0;flex-shrink:0}
+.ru-right{width:50px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:3px 2px}
+.ru-reg-inp{width:100%;text-align:center;font-family:'Rajdhani';font-weight:700;font-size:20px;color:#111;background:transparent;border:none;outline:none;caret-color:#003DA5;line-height:1}
+.ru-reg-inp:focus{background:rgba(0,61,165,.07);border-radius:3px}
+.ru-flag-row{display:flex;align-items:center;gap:2px}
+.ru-flag-box{width:17px;height:12px;display:flex;flex-direction:column;border-radius:1px;overflow:hidden;flex-shrink:0}
+.rf-w{flex:1;background:#fff;border-top:1px solid #ccc}.rf-b{flex:1;background:#003DA5}.rf-r{flex:1;background:#CC0000}
+.ru-rus-txt{font-size:8px;font-weight:700;letter-spacing:1px;color:#111;font-family:'Rajdhani'}
+/* ── UKRAINE ── */
+.plate-ua{width:100%;max-width:340px;height:72px}
+.ua-strip{width:32px;background:#003DA5;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:5px 3px;flex-shrink:0}
+.ua-flag-box{width:20px;height:14px;display:flex;flex-direction:column;border-radius:1px;overflow:hidden}
+.uf-b{flex:1;background:#005BBB}.uf-y{flex:1;background:#FFD500}
+.ua-code{font-family:'Rajdhani';font-weight:700;font-size:9px;color:#fff;letter-spacing:.5px}
+.ua-body{flex:1;display:flex;align-items:center;justify-content:center;padding:0 6px;gap:4px}
+.ua-reg-inp{width:52px;text-align:center;font-family:'Rajdhani';font-weight:700;font-size:34px;color:#111;background:transparent;border:none;outline:none;caret-color:#003DA5;letter-spacing:2px}
+.ua-reg-inp:focus{background:rgba(0,61,165,.08);border-radius:3px}
+.ua-sp{font-size:30px;color:#ccc;pointer-events:none;padding:0 1px}
+.ua-dc{height:58px;font-size:34px;min-width:26px;padding:0 1px}
+.ua-dc.letter{min-width:30px}
+/* ── BELARUS ── */
+.plate-by{width:100%;max-width:340px;height:72px}
+.by-left{width:32px;background:#fff;border-right:1px solid #ddd;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex-shrink:0;padding:4px 2px}
+.by-flag-box{width:20px;height:13px;display:flex;flex-direction:column;border-radius:1px;overflow:hidden}
+.bf-r{flex:4;background:#CC0000}.bf-line{flex:1;background:#fff}.bf-g{flex:2;background:#009B3A}
+.by-code{font-family:'Rajdhani';font-weight:700;font-size:9px;color:#111;letter-spacing:.5px}
+.by-body{flex:1;display:flex;align-items:center;justify-content:center;padding:0 6px;gap:1px}
+.by-dc{height:58px;font-size:34px;min-width:25px;padding:0 1px}
+.by-dc.letter{min-width:29px}
+.by-sp{font-size:30px;color:#ccc;pointer-events:none;padding:0 2px}
+.by-dash{font-size:28px;color:#999;padding:0 3px;pointer-events:none}
+.by-reg-inp{width:24px;text-align:center;font-family:'Rajdhani';font-weight:700;font-size:30px;color:#111;background:transparent;border:none;outline:none;caret-color:#CC0000}
+.by-reg-inp:focus{background:rgba(204,0,0,.07);border-radius:3px}
+/* ── KAZAKHSTAN ── */
+.plate-kz{width:100%;max-width:340px;height:72px}
+.kz-body{flex:1;display:flex;align-items:stretch;padding:0}
+.kz-flagcol{width:38px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 2px;border-right:1px solid #ddd;flex-shrink:0;gap:3px}
+.kz-flag{font-size:18px;line-height:1}
+.kz-kz{font-family:'Rajdhani';font-weight:700;font-size:9px;color:#111;letter-spacing:.5px}
+.kz-chars{flex:1;display:flex;align-items:center;justify-content:center;padding:0 4px;gap:2px}
+.kz-dc{height:58px;font-size:32px;min-width:24px;padding:0 1px}
+.kz-dc.letter{min-width:28px}
+.kz-sp{font-size:28px;color:#ccc;pointer-events:none;padding:0 2px}
+.kz-vdiv{width:2px;background:#111;align-self:stretch;margin:7px 3px;flex-shrink:0}
+.kz-right{width:34px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px;gap:2px}
+.kz-reg-inp{width:100%;text-align:center;font-family:'Rajdhani';font-weight:700;font-size:20px;color:#111;background:transparent;border:none;outline:none;caret-color:#00AFCA}
+.kz-reg-inp:focus{background:rgba(0,175,202,.07);border-radius:3px}
+
+/* ── ACTIONS ── */
+.actions{display:flex;gap:8px;padding:10px 12px 4px;flex-direction:column}
+.btn{flex:1;padding:11px;border:none;border-radius:12px;font-family:'Bebas Neue';font-size:14px;letter-spacing:2px;cursor:pointer;transition:all .15s;user-select:none}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.45;cursor:default;transform:none}
+.btn-spin{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;box-shadow:0 4px 14px rgba(91,141,238,.3)}
+.btn-rand{background:var(--surf);color:var(--text);border:1px solid var(--border)}
+.btn-save{background:linear-gradient(135deg,#4caf75,#2e8b57);color:#fff;box-shadow:0 4px 14px rgba(76,175,117,.22)}
+.btn-save.locked{background:linear-gradient(135deg,#555,#333);box-shadow:none;opacity:.5;cursor:not-allowed}
+.btn-shop{background:linear-gradient(135deg,#f5a623,#e8760a);color:#fff;box-shadow:0 4px 14px rgba(245,166,35,.25)}
+.btn-roul{background:linear-gradient(135deg,#e055aa,#a006f8);color:#fff;box-shadow:0 4px 14px rgba(160,6,248,.3);position:relative}
+.btn-roul .roul-cd{position:absolute;top:-6px;right:-6px;background:#e05555;color:#fff;font-size:9px;font-family:'Bebas Neue';padding:2px 6px;border-radius:10px;letter-spacing:1px}
+
+/* ── INVENTORY ── */
+.div{height:1px;background:var(--border);margin:8px 12px 0}
+.inv-section{padding:16px 12px 80px;border-top:2px solid var(--border);margin-top:14px}
+.inv-tabs{display:flex;gap:6px;margin-bottom:8px}
+.inv-tab{flex:1;padding:8px;background:var(--surf);border:1px solid var(--border);border-radius:10px;font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:var(--muted);cursor:pointer;text-align:center;transition:all .2s}
+.inv-tab.active{background:linear-gradient(135deg,var(--acc),var(--acc2));border-color:transparent;color:#fff}
+.inv-header{display:flex;justify-content:space-between;align-items:center;padding:4px 0 6px}
+.inv-title{font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+.inv-count{font-size:11px;color:var(--acc);font-weight:700}
+.inv-list{display:flex;flex-direction:column;gap:8px}
+/* plate in inventory — full-width white plate */
+.inv-plate-item{background:#fff;border:3px solid #1a1a1a;border-radius:7px;box-shadow:0 4px 16px rgba(0,0,0,.5);width:100%;display:flex;align-items:stretch;overflow:hidden;font-family:'Rajdhani';font-weight:700;color:#111;position:relative;animation:fadeIn .3s ease;cursor:pointer;transition:box-shadow .15s}
+.inv-plate-item:active{box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.inv-plate-del{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.15);border:none;border-radius:50%;width:22px;height:22px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#555;z-index:5}
+/* upgrades inventory */
+.inv-upgrades{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.inv-upg-item{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;animation:fadeIn .3s ease;transition:all .15s;text-align:center}
+.inv-upg-item:active{transform:scale(.97)}
+.inv-upg-preview{width:100%;height:60px;display:flex;align-items:center;justify-content:center}
+.inv-upg-name{font-size:11px;color:var(--text);font-weight:700;letter-spacing:.5px}
+.inv-upg-on{font-size:10px;color:var(--success);margin-top:2px}
+.inv-empty{font-size:12px;color:var(--muted);text-align:center;padding:14px 0;letter-spacing:.5px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;
+  background:linear-gradient(180deg,rgba(17,17,24,0) 0%,rgba(17,17,24,0.97) 18px,#111118 32px);
+  padding:10px 12px 18px;
+  display:flex;gap:8px;align-items:stretch;
+  z-index:100;
+  border-top:1px solid rgba(46,46,69,0.6);
+}
+.bnav-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;padding:8px 4px;
+  background:var(--surf);border:1px solid var(--border);border-radius:14px;
+  cursor:pointer;transition:all .2s;user-select:none;
+  font-family:'Bebas Neue';letter-spacing:1.5px;font-size:11px;color:var(--muted);
+  -webkit-tap-highlight-color:transparent;
+}
+.bnav-btn:active{transform:scale(.95)}
+.bnav-btn.active{background:linear-gradient(135deg,var(--acc),var(--acc2));border-color:transparent;color:#fff;box-shadow:0 4px 14px rgba(91,141,238,.3)}
+.bnav-btn .bnav-icon{font-size:20px;line-height:1}
+.bnav-btn.spin-btn{background:linear-gradient(135deg,var(--acc),var(--acc2));border-color:transparent;color:#fff;box-shadow:0 4px 18px rgba(91,141,238,.35);flex:1.4}
+.bnav-btn.spin-btn .bnav-icon{font-size:22px}
+
+/* Plate Pass button */
+.btn-platepass{background:linear-gradient(135deg,#f5c842,#e8a810);color:#111;box-shadow:0 4px 14px rgba(245,200,66,.3);font-weight:700}
+
+/* Bottom overlay panels (inventory / upgrades) */
+.bpanel-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);
+  display:none;z-index:200;backdrop-filter:blur(5px);
+  align-items:flex-end;justify-content:center;
+}
+.bpanel-overlay.show{display:flex}
+.bpanel-sheet{
+  background:var(--surf);border-radius:20px 20px 0 0;
+  border:1px solid var(--border);border-bottom:none;
+  width:100%;max-width:500px;
+  max-height:82vh;display:flex;flex-direction:column;
+  animation:slideUp .28s cubic-bezier(.25,.46,.45,.94);
+}
+.bpanel-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.bpanel-title{font-family:'Bebas Neue';font-size:18px;letter-spacing:2px;color:#fff}
+.bpanel-close{background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer;padding:0}
+.bpanel-body{overflow-y:auto;padding:14px 14px 24px;flex:1}
+
+/* ── ROULETTE WHEEL ── */
+.roul-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:flex-end;justify-content:center;z-index:300;backdrop-filter:blur(6px)}
+.roul-overlay.show{display:flex}
+.roul-sheet{background:var(--surf);border-radius:20px 20px 0 0;border:1px solid var(--border);border-bottom:none;padding:24px 20px 36px;width:100%;max-width:480px;animation:slideUp .3s cubic-bezier(.25,.46,.45,.94)}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:none}}
+.roul-title{font-family:'Bebas Neue';font-size:22px;letter-spacing:3px;color:#fff;text-align:center;margin-bottom:4px}
+.roul-cd-big{text-align:center;font-size:12px;color:var(--muted);margin-bottom:16px}
+.wheel-wrap{position:relative;width:240px;height:240px;margin:0 auto 20px}
+.wheel-canvas{border-radius:50%;box-shadow:0 0 30px rgba(0,0,0,.5)}
+.wheel-arrow{position:absolute;top:-12px;left:50%;transform:translateX(-50%);font-size:28px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
+.wheel-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:36px;height:36px;background:var(--surf2);border:3px solid var(--border);border-radius:50%}
+.btn-spin-roul{width:100%;padding:14px;background:linear-gradient(135deg,#e055aa,#a006f8);border:none;border-radius:12px;font-family:'Bebas Neue';font-size:20px;letter-spacing:3px;color:#fff;cursor:pointer;transition:all .15s;box-shadow:0 4px 20px rgba(160,6,248,.4)}
+.btn-spin-roul:active{transform:scale(.97)}
+.btn-spin-roul:disabled{opacity:.45;cursor:default;transform:none}
+.roul-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer}
+.roul-result{text-align:center;padding:10px;background:rgba(255,255,255,.05);border-radius:10px;margin-bottom:14px;min-height:44px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px}
+.roul-result-title{font-family:'Bebas Neue';font-size:20px;letter-spacing:2px;color:var(--gold)}
+.roul-result-sub{font-size:12px;color:var(--muted)}
+
+/* ── SHOP ── */
+.shop-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;z-index:300;overflow-y:auto;backdrop-filter:blur(6px)}
+.shop-overlay.show{display:block}
+.shop-sheet{background:var(--surf);min-height:100%;padding:16px 14px 40px}
+.shop-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.shop-hdr-title{font-family:'Bebas Neue';font-size:22px;letter-spacing:3px;color:#fff}
+.shop-close{background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer}
+.shop-balance{display:flex;align-items:center;gap:5px;font-family:'Bebas Neue';font-size:16px;color:var(--gold);letter-spacing:1px}
+.shop-group{margin-bottom:20px}
+.shop-group-title{font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;padding:6px 0 8px;border-bottom:1px solid var(--border);margin-bottom:10px}
+.shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.shop-lot{background:var(--surf2);border:1px solid var(--border);border-radius:14px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:all .15s;text-align:center;position:relative}
+.shop-lot.lot-locked{opacity:.45;cursor:not-allowed}
+.shop-lot.lot-locked::after{content:'🔒 Нужна пласт. рамка';position:absolute;inset:0;background:rgba(17,17,24,.7);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);text-align:center;padding:8px;letter-spacing:.3px}
+.shop-lot-preview{width:100%;height:80px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:rgba(255,255,255,.04);overflow:hidden;position:relative}
+.shop-lot-name{font-size:12px;color:var(--text);font-weight:700;letter-spacing:.3px;line-height:1.3}
+.shop-lot-price{display:flex;align-items:center;gap:3px;font-family:'Bebas Neue';font-size:14px;color:var(--gold);letter-spacing:1px}
+.shop-lot-owned{position:absolute;top:6px;right:6px;background:var(--success);color:#fff;font-size:9px;font-family:'Bebas Neue';padding:2px 6px;border-radius:8px;letter-spacing:1px}
+/* inline mini plate previews in shop */
+.mini-plate{background:#fff;border:2px solid #333;border-radius:4px;font-family:'Rajdhani';font-weight:700;font-size:13px;color:#111;padding:3px 8px;white-space:nowrap;letter-spacing:1px}
+.mini-plate.silicone{outline:3px solid #222;outline-offset:1px}
+.mini-plate.silicone-red{outline:3px solid #cc0000;outline-offset:1px}
+.mini-plate.plastic-preview{position:relative;padding-bottom:14px}
+.plastic-bar{position:absolute;bottom:0;left:0;right:0;height:13px;background:#cc0000;border-radius:0 0 3px 3px;display:flex;align-items:center;justify-content:center;font-size:7px;color:#fff;font-weight:700;letter-spacing:.5px}
+.mini-plate.alum-preview{background:#d0d8e0;border-color:#8899aa}
+.mini-plate.carbon-preview{background:repeating-linear-gradient(45deg,#222 0,#222 3px,#333 3px,#333 6px);color:#ddd;border-color:#444}
+/* animations in shop lots */
+@keyframes flipPreview{0%,100%{transform:rotateX(0)}25%{transform:rotateX(90deg)}75%{transform:rotateX(270deg)}}
+@keyframes shutterPreviewL{0%,15%{width:0}55%,75%{width:50%}90%,100%{width:0}}
+@keyframes shutterPreviewR{0%,15%{width:0}55%,75%{width:50%}90%,100%{width:0}}
+@keyframes glowPreview{0%{box-shadow:0 4px 8px #e55}33%{box-shadow:0 4px 8px #55e}66%{box-shadow:0 4px 8px #5e5}100%{box-shadow:0 4px 8px #e55}}
+.flip-anim{animation:flipPreview 2s ease infinite}
+.glow-anim{animation:glowPreview 1.5s linear infinite}
+.shutter-preview-wrap{position:relative;display:inline-block;overflow:hidden;border-radius:3px;font-size:11px;padding:3px 6px;font-family:'Rajdhani',sans-serif;font-weight:700;color:#111}
+.shutter-preview-wrap .sp-l{position:absolute;top:0;bottom:0;left:0;width:0;background:#111;animation:shutterPreviewL 2.2s ease-in-out infinite}
+.shutter-preview-wrap .sp-r{position:absolute;top:0;bottom:0;right:0;width:0;background:#111;animation:shutterPreviewR 2.2s ease-in-out infinite}
+
+/* ── LOT DETAIL POPUP ── */
+.lot-detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;z-index:400;backdrop-filter:blur(5px);padding:20px}
+.lot-detail-overlay.show{display:flex}
+.lot-detail{background:var(--surf);border:1px solid var(--border);border-radius:18px;padding:20px;width:100%;max-width:320px;animation:popIn .25s cubic-bezier(.25,.46,.45,.94)}
+@keyframes popIn{from{transform:scale(.83);opacity:0}to{transform:scale(1);opacity:1}}
+.lot-detail-preview{width:100%;height:100px;background:rgba(255,255,255,.04);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;overflow:hidden}
+.lot-detail-name{font-family:'Bebas Neue';font-size:18px;letter-spacing:2px;color:#fff;margin-bottom:4px}
+.lot-detail-desc{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:14px}
+.lot-detail-price{font-family:'Bebas Neue';font-size:16px;color:var(--gold);margin-bottom:14px}
+.lot-detail-btns{display:flex;gap:8px}
+.lot-detail-btns .btn{font-size:13px;padding:10px}
+
+/* ── APPLY UPGRADE POPUP ── */
+.apply-overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;z-index:500;backdrop-filter:blur(5px);padding:20px}
+.apply-overlay.show{display:flex}
+.apply-sheet{background:var(--surf);border:1px solid var(--border);border-radius:18px;padding:18px;width:100%;max-width:340px;animation:popIn .25s ease;max-height:80vh;overflow-y:auto}
+.apply-title{font-family:'Bebas Neue';font-size:16px;letter-spacing:2px;color:#fff;margin-bottom:10px;text-align:center}
+.apply-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.apply-plate-choice{background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:8px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:8px}
+.apply-plate-choice:active{border-color:var(--acc)}
+.apply-plate-mini{font-family:'Rajdhani';font-weight:700;font-size:14px;color:#111;background:#fff;border:2px solid #333;border-radius:4px;padding:2px 6px;white-space:nowrap;letter-spacing:1px;flex-shrink:0}
+.apply-plate-info{flex:1;font-size:11px;color:var(--muted)}
+.btn-close-apply{width:100%;padding:10px;background:var(--surf2);border:1px solid var(--border);border-radius:10px;font-family:'Bebas Neue';font-size:14px;letter-spacing:2px;color:var(--muted);cursor:pointer}
+
+/* ── EDITOR (plastic/alum/carbon frame) ── */
+.editor-overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:600;padding:20px}
+.editor-overlay.show{display:flex}
+.editor-plate-wrap{margin-bottom:16px;width:100%;display:flex;justify-content:center}
+.editor-section{background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:14px;width:100%;max-width:340px;margin-bottom:10px}
+.editor-label{font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+.editor-inp{width:100%;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:'Rajdhani';font-weight:700;font-size:16px;color:var(--text);outline:none}
+.editor-colors{display:flex;gap:6px;flex-wrap:wrap}
+.color-btn{width:28px;height:28px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:all .15s;flex-shrink:0}
+.color-btn.sel{border-color:#fff;transform:scale(1.15)}
+.editor-btns{display:flex;gap:8px;width:100%;max-width:340px}
+
+/* ── GLOW EDITOR ── */
+.glow-editor-overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;flex-direction:column;align-items:center;padding:24px 16px;z-index:600;overflow-y:auto}
+.glow-editor-overlay.show{display:flex}
+.glow-cycle-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.glow-cycle-color{width:36px;height:36px;border-radius:8px;border:2px solid var(--border);cursor:pointer;transition:all .15s}
+.glow-add-btn{background:var(--surf);border:1px solid var(--border);border-radius:8px;width:36px;height:36px;color:var(--muted);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.color-picker-inp{width:36px;height:36px;border:none;background:none;cursor:pointer;border-radius:8px;padding:0}
+
+/* ── GENERIC POPUP ── */
+.popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(5px)}
+.popup-overlay.show{display:flex}
+.popup{background:var(--surf);border:1px solid var(--border);border-radius:16px;padding:22px;max-width:280px;width:90%;text-align:center;animation:popIn .25s cubic-bezier(.25,.46,.45,.94)}
+.popup-icon{font-size:28px;margin-bottom:8px}
+.popup-title{font-family:'Bebas Neue';font-size:18px;letter-spacing:2px;color:var(--danger);margin-bottom:8px}
+.popup-body{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px}
+.popup-body b{color:var(--text)}
+.popup-close{background:linear-gradient(135deg,var(--acc),var(--acc2));border:none;border-radius:10px;padding:10px 28px;font-family:'Bebas Neue';font-size:16px;letter-spacing:2px;color:#fff;cursor:pointer}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--success);color:#fff;padding:9px 22px;border-radius:30px;font-family:'Bebas Neue';font-size:14px;letter-spacing:1px;transition:transform .3s cubic-bezier(.25,.46,.45,.94);z-index:999;pointer-events:none;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.error{background:var(--danger)}
+.toast.gold{background:linear-gradient(135deg,#f5a623,#e8760a)}
+
+/* ── REFERRAL POPUP ── */
+.ref-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:700;backdrop-filter:blur(8px);padding:20px}
+.ref-overlay.show{display:flex}
+.ref-sheet{background:linear-gradient(160deg,#1a1a2e 0%,#16213e 100%);border:1px solid rgba(91,141,238,.3);border-radius:22px;padding:28px 22px 24px;width:100%;max-width:340px;text-align:center;animation:popIn .3s cubic-bezier(.25,.46,.45,.94);box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.ref-icon{font-size:52px;margin-bottom:12px;display:block;filter:drop-shadow(0 4px 12px rgba(245,200,66,.4))}
+.ref-title{font-family:'Bebas Neue';font-size:26px;letter-spacing:3px;color:#fff;margin-bottom:8px;line-height:1.1}
+.ref-title span{color:var(--gold)}
+.ref-desc{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:6px}
+.ref-reward{display:inline-flex;align-items:center;gap:6px;background:rgba(245,200,66,.12);border:1px solid rgba(245,200,66,.3);border-radius:20px;padding:6px 16px;font-family:'Bebas Neue';font-size:18px;color:var(--gold);letter-spacing:2px;margin-bottom:18px}
+.ref-progress{background:var(--surf2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between}
+.ref-progress-label{font-size:11px;color:var(--muted);letter-spacing:.5px}
+.ref-progress-val{font-family:'Bebas Neue';font-size:18px;color:#fff;letter-spacing:1px}
+.ref-progress-val span{color:var(--acc)}
+.ref-bar-wrap{width:100%;height:6px;background:var(--surf2);border-radius:3px;margin-top:6px;overflow:hidden}
+.ref-bar{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:3px;transition:width .4s ease}
+.btn-ref-share{width:100%;padding:14px;background:linear-gradient(135deg,#f5a623,#e8760a);border:none;border-radius:14px;font-family:'Bebas Neue';font-size:18px;letter-spacing:2px;color:#fff;cursor:pointer;transition:all .15s;box-shadow:0 4px 20px rgba(245,166,35,.35);margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-ref-share:active{transform:scale(.97)}
+.btn-ref-close{width:100%;padding:11px;background:transparent;border:1px solid var(--border);border-radius:12px;font-family:'Bebas Neue';font-size:14px;letter-spacing:2px;color:var(--muted);cursor:pointer;transition:all .15s}
+.btn-ref-close:active{transform:scale(.97)}
+/* referral button in main UI */
+.btn-ref{background:linear-gradient(135deg,#f5a623,#e8760a);color:#fff;box-shadow:0 4px 14px rgba(245,166,35,.25);position:relative}
+.ref-friends-badge{position:absolute;top:-6px;right:-6px;background:var(--success);color:#fff;font-size:9px;font-family:'Bebas Neue';padding:2px 6px;border-radius:10px;letter-spacing:1px}
+
+/* ── SHARE BUTTON ── */
+.btn-share{background:linear-gradient(135deg,#229ED9,#1a7fc4);color:#fff;box-shadow:0 4px 14px rgba(34,158,217,.35);display:none;animation:fadeIn .3s ease}
+.btn-share.visible{display:block}
+.share-hint{text-align:center;font-size:11px;color:var(--muted);letter-spacing:.3px;display:none;margin-top:-2px}
+.share-hint.visible{display:block}
+
+
+
+.plate-wrap{position:relative}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-title">🚗 НОМЕРА</div>
+  <div class="hdr-right">
+    <div class="luck-badge" id="luck-badge" style="display:none">⚡ <span id="luck-pct"></span>% <span class="luck-timer" id="luck-timer"></span></div>
+    <div class="coins-badge"><span class="coins-icon">🪙</span><span class="coins-val" id="coins-val">0</span></div>
+  </div>
+</div>
+
+<!-- COUNTRY TABS -->
+<div class="ctabs">
+  <div class="ctab active" data-c="RU" onclick="selCountry('RU')"><span class="fl">🇷🇺</span><span class="cn">РОССИЯ</span></div>
+  <div class="ctab" data-c="UA" onclick="selCountry('UA')"><span class="fl">🇺🇦</span><span class="cn">УКРАИНА</span></div>
+  <div class="ctab" data-c="BY" onclick="selCountry('BY')"><span class="fl">🇧🇾</span><span class="cn">БЕЛАРУСЬ</span></div>
+  <div class="ctab" data-c="KZ" onclick="selCountry('KZ')"><span class="fl">🇰🇿</span><span class="cn">КАЗАХСТАН</span></div>
+</div>
+
+<!-- PLATE -->
+<div class="plate-wrap">
+  <div id="plate-display"></div>
+  <div class="region-sub" id="reg-sub"></div>
+</div>
+
+<!-- ACTIONS -->
+<div class="actions">
+  <button class="btn btn-spin" onclick="spinOnly()">🎰 ПРОКРУТИТЬ</button>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-rand" onclick="randomAll()">🎲 СЛУЧАЙНЫЙ РЕГИОН</button>
+    <button class="btn btn-save" id="btn-save" onclick="saveToInventory()">💾 В ИНВЕНТАРЬ</button>
+  </div>
+  <button class="btn btn-platepass" onclick="openPlatePass()">
+    🎫 PLATE PASS
+  </button>
+  <button class="btn btn-share" id="btn-share" onclick="sharePlate()">
+    📤 ПОДЕЛИТЬСЯ НОМЕРОМ
+  </button>
+</div>
+
+<!-- INVENTORY (inline, kept for scroll context but hidden - moved to bottom panels) -->
+<div class="inv-section" id="inv-section-inline" style="display:none">
+  <div class="inv-list" id="inv-list"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="bnav-btn" id="bnav-inv" onclick="openBPanel('inv')">
+    <span class="bnav-icon">📦</span>
+    <span>ИНВЕНТАРЬ</span>
+  </div>
+  <div class="bnav-btn spin-btn" onclick="spinOnly()">
+    <span class="bnav-icon">🎰</span>
+    <span>КРУТИТЬ</span>
+  </div>
+  <div class="bnav-btn" id="bnav-upg" onclick="openBPanel('upg')">
+    <span class="bnav-icon">⚙️</span>
+    <span>УЛУЧШЕНИЯ</span>
+  </div>
+</div>
+
+<!-- INVENTORY PANEL -->
+<div class="bpanel-overlay" id="bpanel-inv" onclick="closeBPanelIfBg(event,'inv')">
+  <div class="bpanel-sheet">
+    <div class="bpanel-hdr">
+      <div class="bpanel-title">📦 ИНВЕНТАРЬ</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:11px;color:var(--acc);font-weight:700" id="bpanel-inv-count">0 / 10</span>
+        <button class="bpanel-close" onclick="closeBPanel('inv')">✕</button>
+      </div>
+    </div>
+    <div class="bpanel-body">
+      <div class="inv-list" id="inv-list-panel"></div>
+    </div>
+  </div>
+</div>
+
+<!-- UPGRADES PANEL -->
+<div class="bpanel-overlay" id="bpanel-upg" onclick="closeBPanelIfBg(event,'upg')">
+  <div class="bpanel-sheet">
+    <div class="bpanel-hdr">
+      <div class="bpanel-title">⚙️ УЛУЧШЕНИЯ</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="shop-balance" style="font-family:'Bebas Neue';font-size:14px;color:var(--gold);letter-spacing:1px">🪙 <span id="bpanel-upg-coins"></span></div>
+        <button class="bpanel-close" onclick="closeBPanel('upg')">✕</button>
+      </div>
+    </div>
+    <div class="bpanel-body" id="bpanel-upg-body">
+      <!-- Shop content injected here -->
+    </div>
+  </div>
+</div>
+
+<!-- REFERRAL POPUP -->
+<div class="ref-overlay" id="ref-overlay">
+  <div class="ref-sheet">
+    <span class="ref-icon">🎁</span>
+    <div class="ref-title">ПРИГЛАСИ ДРУЗЕЙ —<br>ПОЛУЧИ <span>10 000</span> МОНЕТ!</div>
+    <div class="ref-desc">Поделись ссылкой на игру с 5 друзьями.<br>Когда они запустят бота — монеты упадут на твой счёт!</div>
+    <div class="ref-reward">🪙 +10 000 МОНЕТ ЗА 5 ДРУЗЕЙ</div>
+    <div class="ref-progress">
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span class="ref-progress-label">ПРИГЛАШЕНО ДРУЗЕЙ</span>
+          <span class="ref-progress-val"><span id="ref-count">0</span> / 5</span>
+        </div>
+        <div class="ref-bar-wrap"><div class="ref-bar" id="ref-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <button class="btn-ref-share" onclick="shareRefLink()">
+      <span>📨</span> ОТПРАВИТЬ ССЫЛКУ ДРУЗЬЯМ
+    </button>
+    <button class="btn-ref-close" onclick="closeRefPopup()">ЗАКРЫТЬ</button>
+  </div>
+</div>
+
+<!-- GENERIC POPUP (region error) -->
+<div class="popup-overlay" id="popup">
+  <div class="popup">
+    <div class="popup-icon">ℹ️</div>
+    <div class="popup-title">РЕГИОН НЕ СУЩЕСТВУЕТ</div>
+    <div class="popup-body" id="popup-body"></div>
+    <button class="popup-close" onclick="closePopup()">ПОНЯТНО</button>
+  </div>
+</div>
+
+<!-- ROULETTE -->
+<div class="roul-overlay" id="roul-overlay">
+  <div class="roul-sheet" style="position:relative">
+    <button class="roul-close" onclick="closeRoulette()">✕</button>
+    <div class="roul-title">🎡 РУЛЕТКА УДАЧИ</div>
+    <div class="roul-cd-big" id="roul-cd-big">Крути каждые 5 минут!</div>
+    <div class="roul-result" id="roul-result"><span style="color:var(--muted);font-size:13px">Нажми крутить!</span></div>
+    <div class="wheel-wrap">
+      <canvas class="wheel-canvas" id="wheel-canvas" width="240" height="240"></canvas>
+      <div class="wheel-arrow">▼</div>
+      <div class="wheel-center"></div>
+    </div>
+    <button class="btn-spin-roul" id="btn-spin-roul" onclick="spinWheel()">🎰 КРУТИТЬ</button>
+  </div>
+</div>
+
+<!-- SHOP -->
+<div class="shop-overlay" id="shop-overlay">
+  <div class="shop-sheet">
+    <div class="shop-hdr">
+      <div class="shop-hdr-title">🛒 МАГАЗИН УЛУЧШЕНИЙ</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="shop-balance">🪙 <span id="shop-coins"></span></div>
+        <button class="shop-close" onclick="closeShop()">✕</button>
+      </div>
+    </div>
+
+    <!-- GROUP 1: FRAMES -->
+    <div class="shop-group">
+      <div class="shop-group-title">НОМЕРНЫЕ РАМКИ</div>
+      <div class="shop-grid">
+        <div class="shop-lot" onclick="openLotDetail('silicone')">
+          <div class="shop-lot-preview">
+            <div class="mini-plate silicone">А 777 АА</div>
+          </div>
+          <div class="shop-lot-name">Силиконовая рамка</div>
+          <div class="shop-lot-price">🪙 1500</div>
+        </div>
+        <div class="shop-lot" onclick="openLotDetail('plastic')">
+          <div class="shop-lot-preview">
+            <div class="mini-plate plastic-preview">А 777 АА<div class="plastic-bar">ТЕКСТ</div></div>
+          </div>
+          <div class="shop-lot-name">Пластик. рамка + надпись</div>
+          <div class="shop-lot-price">🪙 5000</div>
+        </div>
+        <div class="shop-lot" onclick="openLotDetail('aluminium')">
+          <div class="shop-lot-preview">
+            <div class="mini-plate alum-preview plastic-preview">А 777 АА<div class="plastic-bar">ТЕКСТ</div></div>
+          </div>
+          <div class="shop-lot-name">Алюминиевая рамка</div>
+          <div class="shop-lot-price">🪙 1000</div>
+        </div>
+        <div class="shop-lot" onclick="openLotDetail('carbon')">
+          <div class="shop-lot-preview">
+            <div class="mini-plate carbon-preview plastic-preview">А 777 АА<div class="plastic-bar">ТЕКСТ</div></div>
+          </div>
+          <div class="shop-lot-name">Карбоновая рамка</div>
+          <div class="shop-lot-price">🪙 1000</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GROUP 2: MODS -->
+    <div class="shop-group">
+      <div class="shop-group-title">КАСТОМНЫЕ МОДИФИКАЦИИ</div>
+      <div class="shop-grid">
+        <div class="shop-lot" onclick="openLotDetail('flip')">
+          <div class="shop-lot-preview">
+            <div class="mini-plate flip-anim">А 777 АА</div>
+          </div>
+          <div class="shop-lot-name">Переворот 360°</div>
+          <div class="shop-lot-price">🪙 10000</div>
+        </div>
+        <div class="shop-lot" onclick="openLotDetail('shutter')">
+          <div class="shop-lot-preview">
+            <div class="shutter-preview-wrap mini-plate">А 777 АА<div class="sp-l"></div><div class="sp-r"></div></div>
+          </div>
+          <div class="shop-lot-name">Шторки на номере</div>
+          <div class="shop-lot-price">🪙 5000</div>
+        </div>
+        <div class="shop-lot" onclick="openLotDetail('glow')">
+          <div class="shop-lot-preview">
+            <div class="mini-plate glow-anim">А 777 АА</div>
+          </div>
+          <div class="shop-lot-name">Подсветка номера</div>
+          <div class="shop-lot-price">🪙 7000</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOT DETAIL -->
+<div class="lot-detail-overlay" id="lot-detail-overlay">
+  <div class="lot-detail">
+    <div class="lot-detail-preview" id="lot-detail-preview"></div>
+    <div class="lot-detail-name" id="lot-detail-name"></div>
+    <div class="lot-detail-desc" id="lot-detail-desc"></div>
+    <div class="lot-detail-price" id="lot-detail-price"></div>
+    <div class="lot-detail-btns">
+      <button class="btn btn-rand" style="font-size:13px;padding:10px" onclick="closeLotDetail()">НАЗАД</button>
+      <button class="btn btn-save" style="font-size:13px;padding:10px" id="lot-buy-btn" onclick="buyLot()">КУПИТЬ</button>
+    </div>
+  </div>
+</div>
+
+<!-- APPLY UPGRADE -->
+<div class="apply-overlay" id="apply-overlay">
+  <div class="apply-sheet">
+    <div class="apply-title" id="apply-title">ВЫБЕРИ НОМЕР</div>
+    <div class="apply-list" id="apply-list"></div>
+    <button class="btn-close-apply" onclick="closeApply()">ОТМЕНА</button>
+  </div>
+</div>
+
+<!-- FRAME EDITOR -->
+<div class="editor-overlay" id="editor-overlay">
+  <div class="editor-plate-wrap" id="editor-plate-wrap"></div>
+  <div class="editor-section">
+    <div class="editor-label">ТЕКСТ НА РАМКЕ (до 30 символов)</div>
+    <input class="editor-inp" id="editor-text-inp" maxlength="30" placeholder="Введи текст..." oninput="updateEditorPreview()">
+  </div>
+  <div class="editor-section">
+    <div class="editor-label">ЦВЕТ ПОЛОСКИ</div>
+    <div class="editor-colors" id="editor-bar-colors"></div>
+  </div>
+  <div class="editor-section">
+    <div class="editor-label">ЦВЕТ ТЕКСТА</div>
+    <div class="editor-colors" id="editor-txt-colors"></div>
+  </div>
+  <div class="editor-btns">
+    <button class="btn btn-rand" onclick="cancelEditor()">ОТМЕНА</button>
+    <button class="btn btn-save" onclick="applyEditor()">ПРИМЕНИТЬ</button>
+  </div>
+</div>
+
+<!-- GLOW EDITOR -->
+<div class="glow-editor-overlay" id="glow-editor-overlay">
+  <div style="font-family:'Bebas Neue';font-size:20px;letter-spacing:2px;color:#fff;margin-bottom:14px;text-align:center">⚡ РЕДАКТОР ПОДСВЕТКИ</div>
+  <div id="glow-preview-wrap" style="margin-bottom:16px;width:100%;display:flex;justify-content:center"></div>
+  <div style="background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:14px;width:100%;max-width:340px;margin-bottom:10px">
+    <div style="font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">ЦИКЛЫ ЦВЕТОВ (макс. 3)</div>
+    <div id="glow-cycles-wrap"></div>
+    <button class="glow-add-btn" id="glow-add-btn" onclick="addGlowCycle()" style="margin-top:8px;width:100%;border-radius:8px;height:36px">+ ДОБАВИТЬ ЦВЕТ</button>
+  </div>
+  <div style="display:flex;gap:8px;width:100%;max-width:340px">
+    <button class="btn btn-rand" onclick="cancelGlowEditor()">ОТМЕНА</button>
+    <button class="btn btn-save" onclick="applyGlowEditor()">ПРИМЕНИТЬ</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  REGIONS DATA
+// ═══════════════════════════════════════════════════════════
+const REGIONS={
+  RU:{'01':'Респ. Адыгея','101':'Респ. Адыгея','02':'Респ. Башкортостан','102':'Респ. Башкортостан','702':'Респ. Башкортостан','03':'Респ. Бурятия','103':'Респ. Бурятия','04':'Респ. Алтай','05':'Респ. Дагестан','105':'Респ. Дагестан','06':'Респ. Ингушетия','07':'Кабардино-Балкарская Респ.','08':'Респ. Калмыкия','09':'Карачаево-Черкесская Респ.','10':'Респ. Карелия','11':'Респ. Коми','12':'Респ. Марий Эл','13':'Респ. Мордовия','113':'Респ. Мордовия','14':'Респ. Саха (Якутия)','15':'Респ. Северная Осетия','16':'Респ. Татарстан','116':'Респ. Татарстан','716':'Респ. Татарстан','17':'Респ. Тыва','18':'Удмуртская Респ.','19':'Респ. Хакасия','21':'Чувашская Респ.','121':'Чувашская Респ.','22':'Алтайский край','122':'Алтайский край','23':'Краснодарский край','93':'Краснодарский край','123':'Краснодарский край','193':'Краснодарский край','24':'Красноярский край','84':'Красноярский край','88':'Красноярский край','124':'Красноярский край','25':'Приморский край','125':'Приморский край','26':'Ставропольский край','126':'Ставропольский край','27':'Хабаровский край','28':'Амурская обл.','29':'Архангельская обл.','30':'Астраханская обл.','31':'Белгородская обл.','32':'Брянская обл.','33':'Владимирская обл.','34':'Волгоградская обл.','134':'Волгоградская обл.','35':'Вологодская обл.','36':'Воронежская обл.','136':'Воронежская обл.','37':'Ивановская обл.','38':'Иркутская обл.','138':'Иркутская обл.','39':'Калининградская обл.','91':'Калининградская обл.','40':'Калужская обл.','41':'Камчатский край','42':'Кемеровская обл.','142':'Кемеровская обл.','43':'Кировская обл.','44':'Костромская обл.','45':'Курганская обл.','46':'Курская обл.','47':'Ленинградская обл.','147':'Ленинградская обл.','48':'Липецкая обл.','49':'Магаданская обл.','50':'Московская обл.','90':'Московская обл.','150':'Московская обл.','190':'Московская обл.','250':'Московская обл.','550':'Московская обл.','750':'Московская обл.','790':'Московская обл.','51':'Мурманская обл.','52':'Нижегородская обл.','152':'Нижегородская обл.','252':'Нижегородская обл.','53':'Новгородская обл.','54':'Новосибирская обл.','154':'Новосибирская обл.','55':'Омская обл.','155':'Омская обл.','56':'Оренбургская обл.','156':'Оренбургская обл.','57':'Орловская обл.','58':'Пензенская обл.','59':'Пермский край','81':'Пермский край','159':'Пермский край','60':'Псковская обл.','61':'Ростовская обл.','161':'Ростовская обл.','761':'Ростовская обл.','62':'Рязанская обл.','63':'Самарская обл.','163':'Самарская обл.','763':'Самарская обл.','64':'Саратовская обл.','164':'Саратовская обл.','65':'Сахалинская обл.','66':'Свердловская обл.','96':'Свердловская обл.','196':'Свердловская обл.','67':'Смоленская обл.','68':'Тамбовская обл.','69':'Тверская обл.','70':'Томская обл.','71':'Тульская обл.','72':'Тюменская обл.','172':'Тюменская обл.','73':'Ульяновская обл.','74':'Челябинская обл.','174':'Челябинская обл.','774':'Челябинская обл.','75':'Забайкальский край','80':'Забайкальский край','76':'Ярославская обл.','77':'г. Москва','97':'г. Москва','99':'г. Москва','177':'г. Москва','197':'г. Москва','199':'г. Москва','777':'г. Москва','797':'г. Москва','799':'г. Москва','977':'г. Москва','78':'г. Санкт-Петербург','98':'г. Санкт-Петербург','178':'г. Санкт-Петербург','198':'г. Санкт-Петербург','79':'Еврейская авт. обл.','82':'Респ. Крым','83':'Ненецкий авт. окр.','85':'Запорожская обл.','185':'Запорожская обл.','86':'Ханты-Мансийский авт. окр.','186':'Ханты-Мансийский авт. окр.','87':'Чукотский авт. окр.','89':'Ямало-Ненецкий авт. окр.','92':'г. Севастополь','95':'Чеченская Респ.','180':'Донецкая Нар. Респ.','181':'Луганская Нар. Респ.','184':'Херсонская обл.'},
+  UA:{'AA':'г. Киев','КА':'г. Киев','AI':'Киевская обл.','КI':'Киевская обл.','BC':'Львовская обл.','КС':'Львовская обл.','AC':'Волынская обл. (Луцк)','AO':'Закарпатская обл. (Ужгород)','КО':'Закарпатская обл. (Ужгород)','AT':'Ивано-Франковская обл.','КТ':'Ивано-Франковская обл.','AM':'Житомирская обл.','КМ':'Житомирская обл.','BK':'Ровненская обл.','НК':'Ровненская обл.','BO':'Тернопольская обл.','НО':'Тернопольская обл.','BX':'Хмельницкая обл.','НХ':'Хмельницкая обл.','CE':'Черновицкая обл.','ІЕ':'Черновицкая обл.','BA':'Кировоградская обл. (Кропивницкий)','НА':'Кировоградская обл. (Кропивницкий)','BI':'Полтавская обл.','НI':'Полтавская обл.','CA':'Черкасская обл.','IA':'Черкасская обл.','CB':'Черниговская обл.','IB':'Черниговская обл.','BM':'Сумская обл.','НМ':'Сумская обл.','AB':'Винницкая обл.','КВ':'Винницкая обл.'},
+  BY:{'1':'Брестская область','2':'Витебская область','3':'Гомельская область','4':'Гродненская область','5':'Минская область','6':'Могилёвская область','7':'г. Минск'},
+  KZ:{'01':'г. Астана','02':'г. Алматы','03':'Акмолинская обл.','04':'Актюбинская обл.','05':'Алматинская обл.','06':'Атырауская обл.','07':'Западно-Казахстанская обл.','08':'Жамбылская обл.','09':'Карагандинская обл.','10':'Костанайская обл.','11':'Кызылординская обл.','12':'Мангистауская обл.','13':'Туркестанская обл.','14':'Павлодарская обл.','15':'Северо-Казахстанская обл.','16':'Восточно-Казахстанская обл.','17':'г. Шымкент','18':'Абайская обл.','19':'Жетысуская обл.','20':'Улытауская обл.'}
+};
+const POPUP_HINTS={RU:'Пример: <b>777</b> — Москва, <b>98</b> — СПб, <b>23</b> — Краснодар.',UA:'Пример: <b>AA</b> — Киев, <b>AT</b> — Ивано-Франковск, <b>AB</b> — Винница.',BY:'Цифру 1–7. Пример: <b>7</b> — г. Минск, <b>1</b> — Брестская область.',KZ:'Код 01–20. Пример: <b>01</b> — Астана, <b>02</b> — Алматы.'};
+const COUNTRY_FLAGS={RU:'🇷🇺',UA:'🇺🇦',BY:'🇧🇾',KZ:'🇰🇿'};
+const RU_L=['А','В','Е','К','М','Н','О','Р','С','Т','У','Х'];
+const RU_D=['0','1','2','3','4','5','6','7','8','9'];
+const UA_L=['A','B','E','I','K','M','H','O','P','C','T','X'];
+const BY_L=['A','B','E','K','M','H','O','P','C','T','X'];
+const KZ_L='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const SLOTS_DEF={
+  RU:[{id:'l1',c:RU_L},{id:'d1',c:RU_D},{id:'d2',c:RU_D},{id:'d3',c:RU_D},{id:'l2',c:RU_L},{id:'l3',c:RU_L}],
+  UA:[{id:'d1',c:RU_D},{id:'d2',c:RU_D},{id:'d3',c:RU_D},{id:'d4',c:RU_D},{id:'l1',c:UA_L},{id:'l2',c:UA_L}],
+  BY:[{id:'d1',c:RU_D},{id:'d2',c:RU_D},{id:'d3',c:RU_D},{id:'d4',c:RU_D},{id:'l1',c:BY_L},{id:'l2',c:BY_L}],
+  KZ:[{id:'d1',c:RU_D},{id:'d2',c:RU_D},{id:'d3',c:RU_D},{id:'l1',c:KZ_L},{id:'l2',c:KZ_L},{id:'l3',c:KZ_L}]
+};
+const PLACEHOLDERS={
+  RU:{l1:'А',d1:'5',d2:'5',d3:'5',l2:'А',l3:'А'},
+  UA:{d1:'5',d2:'5',d3:'5',d4:'5',l1:'А',l2:'А'},
+  BY:{d1:'5',d2:'5',d3:'5',d4:'5',l1:'А',l2:'А'},
+  KZ:{d1:'5',d2:'5',d3:'5',l1:'A',l2:'A',l3:'A'}
+};
+
+// ═══════════════════════════════════════════════════════════
+//  SHOP LOTS DATA
+// ═══════════════════════════════════════════════════════════
+const LOTS={
+  silicone:{name:'Силиконовая рамка',price:1500,desc:'Тонкий цветной кант вокруг номера. Плотно прилегает к знаку, без рекламных надписей.',type:'frame'},
+  plastic:{name:'Пластик. рамка + надпись',price:5000,desc:'Пластиковая рамка с индивидуальным текстом (до 30 символов). Можно выбрать цвет полоски и текста.',type:'frame'},
+  aluminium:{name:'Алюминиевая рамка',price:1000,desc:'Рамка из алюминия с индивидуальным текстом. Требует наличия пластиковой рамки.',type:'frame'},
+  carbon:{name:'Карбоновая рамка',price:1000,desc:'Рамка из карбона с индивидуальным текстом. Требует наличия пластиковой рамки.',type:'frame'},
+  flip:{name:'Переворот номера 360°',price:10000,desc:'Механизм переворачивает номер на 360° при нажатии. Полный оборот с плавной анимацией.',type:'mod'},
+  shutter:{name:'Шторки на номере',price:5000,desc:'Чёрные шторки закрывают и открывают номер при нажатии.',type:'mod'},
+  glow:{name:'Подсветка номера',price:7000,desc:'Подсветка снизу номера. Выбери до 3 цветов в цикле. Настраивается в редакторе.',type:'mod'}
+};
+
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+let country='RU', regionCode='', vals={}, plateEmpty=true;
+let isSpinning=false, randomRegionUsed=false, spunAtLeastOnce=false;
+let coins=0, luckPct=0, luckTimer=0;
+let invTab='plates';
+let inventory=[];
+let upgInventory=[];
+let currentLotKey='';
+let editorState={plateIdx:-1, lotId:'', text:'', barColor:'#CC0000', txtColor:'#ffffff'};
+let glowEditorState={plateIdx:-1, lotId:'', colors:['#ff0000','#0000ff','#00ff00']};
+let roulLastTime=0;
+let roulSpinning=false;
+let luckInterval=null;
+let refCount=0;         // how many friends joined
+let refRewarded=false;  // whether 10k was already given
+let refShownOnStart=false; // whether startup popup was shown
+
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const rndKey=o=>{const k=Object.keys(o);return k[Math.floor(Math.random()*k.length)]};
+
+// ═══════════════════════════════════════════════════════════
+//  SOUND ENGINE
+// ═══════════════════════════════════════════════════════════
+let _actx=null;
+function getACtx(){if(!_actx)_actx=new(window.AudioContext||window.webkitAudioContext)();return _actx}
+function playClick(){try{const c=getACtx(),b=c.createBuffer(1,c.sampleRate*.04,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3);const s=c.createBufferSource(),g=c.createGain(),f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=3000;f.Q.value=0.8;s.buffer=b;s.connect(f);f.connect(g);g.connect(c.destination);g.gain.setValueAtTime(.25,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.06);s.start();s.stop(c.currentTime+.06)}catch(e){}}
+function playTick(){try{const c=getACtx(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type='sine';o.frequency.setValueAtTime(900,c.currentTime);g.gain.setValueAtTime(.07,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.025);o.start();o.stop(c.currentTime+.025)}catch(e){}}
+function playLand(){try{const c=getACtx(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type='triangle';o.frequency.setValueAtTime(500,c.currentTime);o.frequency.exponentialRampToValueAtTime(300,c.currentTime+.08);g.gain.setValueAtTime(.14,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.1);o.start();o.stop(c.currentTime+.1)}catch(e){}}
+function playSuccess(){try{const c=getACtx();[440,554,659].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type='sine';const t=c.currentTime+i*.1;o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(.15,t);g.gain.exponentialRampToValueAtTime(.001,t+.18);o.start(t);o.stop(t+.18)})}catch(e){}}
+function playError(){try{const c=getACtx(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type='sawtooth';o.frequency.setValueAtTime(220,c.currentTime);o.frequency.exponentialRampToValueAtTime(110,c.currentTime+.15);g.gain.setValueAtTime(.15,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.18);o.start();o.stop(c.currentTime+.18)}catch(e){}}
+function playCoins(){try{const c=getACtx();[800,1000,1200,1000,1400].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type='sine';const t=c.currentTime+i*.06;o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(.12,t);g.gain.exponentialRampToValueAtTime(.001,t+.08);o.start(t);o.stop(t+.08)})}catch(e){}}
+function haptic(t){try{if(window.Telegram?.WebApp?.HapticFeedback){if(t==='success')Telegram.WebApp.HapticFeedback.notificationOccurred('success');else if(t==='warning')Telegram.WebApp.HapticFeedback.notificationOccurred('warning');else Telegram.WebApp.HapticFeedback.impactOccurred('light')}}catch(e){}}
+
+// ═══════════════════════════════════════════════════════════
+//  COINS & LUCK
+// ═══════════════════════════════════════════════════════════
+function addCoins(n){coins+=n;updateCoinsUI();saveGame()}
+function updateCoinsUI(){document.getElementById('coins-val').textContent=coins;const s=document.getElementById('shop-coins');if(s)s.textContent=coins}
+function startLuck(pct,minutes){
+  luckPct=pct; luckTimer=minutes*60;
+  document.getElementById('luck-badge').style.display='flex';
+  document.getElementById('luck-pct').textContent=pct;
+  if(luckInterval)clearInterval(luckInterval);
+  luckInterval=setInterval(()=>{
+    luckTimer--;
+    const m=Math.floor(luckTimer/60),s=luckTimer%60;
+    document.getElementById('luck-timer').textContent=`${m}:${s<10?'0':''}${s}`;
+    if(luckTimer<=0){clearInterval(luckInterval);luckPct=0;document.getElementById('luck-badge').style.display='none'}
+  },1000);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ROULETTE
+// ═══════════════════════════════════════════════════════════
+const WHEEL_SECTORS=[
+  {label:'300 монет',color:'#4caf75',prob:.50,type:'coins',amount:300},
+  {label:'Удача +10%\n3 мин',color:'#5b8dee',prob:.50,type:'luck',amount:10},
+  {label:'Удача +20%\n3 мин',color:'#a06af8',prob:.06,type:'luck',amount:20},
+  {label:'1000 монет',color:'#f5c842',prob:.04,type:'coins',amount:1000}
+];
+// normalize to cumulative
+const WHEEL_CUM=(()=>{let t=0;return WHEEL_SECTORS.map(s=>{t+=s.prob;return t})})();
+
+function drawWheel(rotation){
+  const canvas=document.getElementById('wheel-canvas');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const cx=120,cy=120,r=115;
+  const total=WHEEL_SECTORS.length;
+  const arc=2*Math.PI/total;
+  ctx.clearRect(0,0,240,240);
+  WHEEL_SECTORS.forEach((s,i)=>{
+    const start=rotation+i*arc-Math.PI/2;
+    const end=start+arc;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,start,end);ctx.closePath();
+    ctx.fillStyle=s.color;ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,.3)';ctx.lineWidth=2;ctx.stroke();
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(start+arc/2);
+    ctx.textAlign='center';ctx.fillStyle='#fff';ctx.font='bold 11px Rajdhani,sans-serif';
+    const lines=s.label.split('\n');
+    lines.forEach((l,li)=>{ctx.fillText(l,r*.6,li*14-((lines.length-1)*7))});
+    ctx.restore();
+  });
+  // center circle
+  ctx.beginPath();ctx.arc(cx,cy,18,0,Math.PI*2);ctx.fillStyle='#1c1c28';ctx.fill();ctx.strokeStyle='#2e2e45';ctx.lineWidth=3;ctx.stroke();
+}
+
+let wheelRot=0;
+function openRoulette(){
+  playClick();
+  const now=Date.now();
+  const elapsed=now-roulLastTime;
+  const cd=5*60*1000-elapsed;
+  const btn=document.getElementById('btn-spin-roul');
+  if(roulLastTime>0&&cd>0){
+    btn.disabled=true;
+    const m=Math.floor(cd/60000),s=Math.floor((cd%60000)/1000);
+    document.getElementById('roul-cd-big').textContent=`Следующая через ${m}:${s<10?'0':''}${s}`;
+  } else {
+    btn.disabled=false;
+    document.getElementById('roul-cd-big').textContent='Крути каждые 5 минут!';
+  }
+  // always reset result display when opening — never show previous result upfront
+  document.getElementById('roul-result').innerHTML=`<span style="color:var(--muted);font-size:13px">Нажми крутить!</span>`;
+  drawWheel(wheelRot);
+  document.getElementById('roul-overlay').classList.add('show');
+}
+function closeRoulette(){document.getElementById('roul-overlay').classList.remove('show')}
+
+function pickSector(){
+  // weighted random
+  const r=Math.random();
+  for(let i=0;i<WHEEL_SECTORS.length;i++)if(r<=WHEEL_CUM[i])return i;
+  return 0;
+}
+
+function spinWheel(){
+  if(roulSpinning)return;
+  const now=Date.now();
+  if(roulLastTime>0&&now-roulLastTime<5*60*1000){playError();showToast('Рулетка ещё не готова!','error');return}
+  roulSpinning=true;
+  document.getElementById('btn-spin-roul').disabled=true;
+  playClick();haptic('light');
+
+  const targetIdx=pickSector();
+  const total=WHEEL_SECTORS.length;
+  const arc=2*Math.PI/total;
+  // spin to land on targetIdx: arrow is at top (−π/2), sector i starts at rotation+i*arc−π/2
+  // we want arrow to point to center of targetIdx sector
+  const extraSpins=5+Math.floor(Math.random()*3);
+  const targetAngle=-(targetIdx*arc+arc/2); // negative so sector center points up
+  const finalRot=wheelRot+(extraSpins*2*Math.PI)+(targetAngle-wheelRot%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+
+  const duration=4000;
+  const start=Date.now();
+  const startRot=wheelRot;
+
+  function easeOut(t){return 1-Math.pow(1-t,3)}
+  function frame(){
+    const elapsed=Date.now()-start;
+    const t=Math.min(elapsed/duration,1);
+    const cur=startRot+(finalRot-startRot)*easeOut(t);
+    wheelRot=cur;
+    drawWheel(cur);
+    if(t<1){requestAnimationFrame(frame)}
+    else{
+      wheelRot=finalRot;
+      roulLastTime=Date.now();
+      roulSpinning=false;
+      applyRoulResult(targetIdx);
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+function applyRoulResult(idx){
+  const s=WHEEL_SECTORS[idx];
+  const res=document.getElementById('roul-result');
+  if(s.type==='coins'){
+    addCoins(s.amount);
+    playCoins();haptic('success');
+    res.innerHTML=`<div class="roul-result-title">🪙 +${s.amount} МОНЕТ</div><div class="roul-result-sub">Добавлено в баланс!</div>`;
+    showToast(`+${s.amount} монет!`,'gold');
+  } else {
+    startLuck(s.amount,3);
+    playSuccess();haptic('success');
+    res.innerHTML=`<div class="roul-result-title">⚡ УДАЧА +${s.amount}%</div><div class="roul-result-sub">На 3 минуты! Крути номера!</div>`;
+    showToast(`Удача +${s.amount}% на 3 мин!`);
+  }
+  // start roulette cooldown display
+  saveGame();
+  const btn=document.getElementById('btn-spin-roul');
+  let cd=5*60;
+  const cdIv=setInterval(()=>{
+    cd--;
+    const m=Math.floor(cd/60),s2=cd%60;
+    document.getElementById('roul-cd-big').textContent=`Следующая через ${m}:${s2<10?'0':''}${s2}`;
+    const rbtn=document.getElementById('roul-cd');
+    if(rbtn){rbtn.style.display='flex';rbtn.textContent=`${m}:${s2<10?'0':''}${s2}`}
+    if(cd<=0){clearInterval(cdIv);document.getElementById('roul-cd-big').textContent='Крути каждые 5 минут!';btn.disabled=false;const r2=document.getElementById('roul-cd');if(r2)r2.style.display='none'}
+  },1000);
+  btn.disabled=true;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SHOP
+// ═══════════════════════════════════════════════════════════
+function openShop(){
+  playClick();
+  document.getElementById('shop-coins').textContent=coins;
+  // lock aluminium/carbon if plastic not owned
+  const hasPlastic=!!upgInventory.find(u=>u.lotKey==='plastic');
+  ['aluminium','carbon'].forEach(key=>{
+    const lot=document.querySelector(`.shop-lot[onclick="openLotDetail('${key}')"]`);
+    if(lot)lot.classList.toggle('lot-locked',!hasPlastic);
+  });
+  document.getElementById('shop-overlay').classList.add('show');
+}
+function closeShop(){document.getElementById('shop-overlay').classList.remove('show')}
+
+function openLotDetail(key){
+  // aluminium and carbon require plastic to be owned first
+  if((key==='aluminium'||key==='carbon')&&!upgInventory.find(u=>u.lotKey==='plastic')){
+    showToast('❌ Сначала купи пластиковую рамку!','error');playError();return;
+  }
+  currentLotKey=key;
+  const lot=LOTS[key];
+  const overlay=document.getElementById('lot-detail-overlay');
+  document.getElementById('lot-detail-name').textContent=lot.name;
+  document.getElementById('lot-detail-desc').textContent=lot.desc;
+  document.getElementById('lot-detail-price').textContent=`🪙 ${lot.price} монет`;
+
+  // preview with sample plate
+  const prev=document.getElementById('lot-detail-preview');
+  prev.innerHTML='';
+  const wrap=document.createElement('div');
+  wrap.style.cssText='display:flex;flex-direction:column;align-items:center;gap:6px';
+  const plate=document.createElement('div');
+  plate.innerHTML='<div style="background:#fff;border:3px solid #333;border-radius:6px;font-family:Rajdhani,sans-serif;font-weight:700;font-size:20px;padding:6px 14px;letter-spacing:2px;color:#111;position:relative;white-space:nowrap">А 555 АА</div>';
+  if(key==='silicone'){plate.querySelector('div').style.outline='4px solid #222';plate.querySelector('div').style.outlineOffset='2px'}
+  if(key==='plastic'||key==='aluminium'||key==='carbon'){
+    const inner=plate.querySelector('div');
+    if(key==='aluminium')inner.style.background='#d0d8e0';
+    if(key==='carbon')inner.style.background='repeating-linear-gradient(45deg,#222 0,#222 3px,#333 3px,#333 6px)';
+    const bar=document.createElement('div');
+    bar.style.cssText='position:absolute;bottom:0;left:0;right:0;height:16px;background:#CC0000;border-radius:0 0 4px 4px;display:flex;align-items:center;justify-content:center;font-size:8px;color:#fff;font-weight:700;letter-spacing:1px';
+    bar.textContent='ТЕКСТ';
+    inner.style.paddingBottom='20px';
+    inner.appendChild(bar);
+  }
+  if(key==='flip'){plate.querySelector('div').style.animation='flipPreview 2s ease infinite'}
+  if(key==='shutter'){
+    const inner=plate.querySelector('div');
+    inner.style.overflow='hidden';
+    const sl=document.createElement('div');
+    sl.style.cssText='position:absolute;top:0;bottom:0;left:0;width:0;background:#111;animation:shutterPreviewL 2.2s ease-in-out infinite';
+    const sr=document.createElement('div');
+    sr.style.cssText='position:absolute;top:0;bottom:0;right:0;width:0;background:#111;animation:shutterPreviewR 2.2s ease-in-out infinite';
+    inner.appendChild(sl);inner.appendChild(sr);
+  }
+  if(key==='glow'){plate.querySelector('div').style.animation='glowPreview 1.5s linear infinite'}
+  wrap.appendChild(plate);
+  prev.appendChild(wrap);
+
+  const owned=upgInventory.filter(u=>u.lotKey===key).length;
+  const buyBtn=document.getElementById('lot-buy-btn');
+  buyBtn.textContent=`КУПИТЬ (🪙${lot.price})`;
+  overlay.classList.add('show');
+}
+function closeLotDetail(){document.getElementById('lot-detail-overlay').classList.remove('show')}
+
+function buyLot(){
+  const lot=LOTS[currentLotKey];
+  if(coins<lot.price){showToast('Недостаточно монет!','error');playError();return}
+  coins-=lot.price;
+  updateCoinsUI();
+  upgInventory.push({id:Date.now(),lotKey:currentLotKey,applied:false,plateIdx:-1,barColor:'#CC0000',txtColor:'#ffffff',frameText:'',glowColors:['#ff0000','#0000ff','#00ff00']});
+  renderInventory();
+  closeLotDetail();
+  closeShop();
+  showToast('✅ Улучшение куплено!');
+  playSuccess();haptic('success');saveGame();
+  if(invTab!=='upgrades'){switchInvTab('upgrades')}
+}
+
+// ═══════════════════════════════════════════════════════════
+//  APPLY UPGRADE
+// ═══════════════════════════════════════════════════════════
+let applyUpgId=null;
+function openApplyUpgrade(upgId){
+  applyUpgId=upgId;
+  const upg=upgInventory.find(u=>u.id===upgId);
+  if(!upg)return;
+  const lot=LOTS[upg.lotKey];
+  document.getElementById('apply-title').textContent=`ПРИМЕНИТЬ: ${lot.name}`;
+  const list=document.getElementById('apply-list');
+  list.innerHTML='';
+  if(!inventory.length){list.innerHTML='<div class="inv-empty">Нет номеров в инвентаре</div>';document.getElementById('apply-overlay').classList.add('show');return}
+  inventory.forEach((item,i)=>{
+    const row=document.createElement('div');
+    row.className='apply-plate-choice';
+    row.innerHTML=`<div class="apply-plate-mini">${getShortText(item)}</div><div class="apply-plate-info">${item.flag} ${item.rc} — ${item.rname}</div>`;
+    row.onclick=()=>chooseApplyTarget(i);
+    list.appendChild(row);
+  });
+  document.getElementById('apply-overlay').classList.add('show');
+  playClick();
+}
+function closeApply(){document.getElementById('apply-overlay').classList.remove('show');applyUpgId=null}
+
+function chooseApplyTarget(plateIdx){
+  if(applyUpgId===null)return;
+  const upg=upgInventory.find(u=>u.id===applyUpgId);
+  if(!upg)return;
+  closeApply();
+
+  // For frame-type with text editor
+  if(['plastic','aluminium','carbon'].includes(upg.lotKey)){
+    editorState={plateIdx,lotId:applyUpgId,text:upg.frameText||'',barColor:upg.barColor||'#CC0000',txtColor:upg.txtColor||'#ffffff'};
+    openEditor();
+    return;
+  }
+  // For glow
+  if(upg.lotKey==='glow'){
+    glowEditorState={plateIdx,lotId:applyUpgId,colors:upg.glowColors||['#ff0000','#0000ff','#00ff00']};
+    openGlowEditor();
+    return;
+  }
+  // Direct apply
+  applyUpgradeToPlate(applyUpgId, plateIdx, {});
+  applyUpgId=null;
+}
+
+function applyUpgradeToPlate(upgId, plateIdx, options){
+  const upg=upgInventory.find(u=>u.id===upgId);
+  if(!upg)return;
+  const plate=inventory[plateIdx];
+  if(!plate)return;
+  if(!plate.upgrades)plate.upgrades={};
+
+  const key=upg.lotKey;
+  plate.upgrades[key]=true;
+  if(options.frameText!==undefined)plate.frameText=options.frameText;
+  if(options.barColor)plate.barColor=options.barColor;
+  if(options.txtColor)plate.txtColor=options.txtColor;
+  if(options.glowColors)plate.glowColors=options.glowColors;
+
+  upg.applied=true;
+  upg.plateIdx=plateIdx;
+  renderInventory();
+  showToast('✅ Улучшение применено!');
+  playSuccess();haptic('success');saveGame();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  FRAME EDITOR
+// ═══════════════════════════════════════════════════════════
+const PRESET_COLORS=['#CC0000','#003DA5','#009B3A','#f5c842','#ffffff','#111111','#FF6B00','#9B59B6','#1ABC9C'];
+function openEditor(){
+  const plate=inventory[editorState.plateIdx];
+  if(!plate)return;
+  document.getElementById('editor-text-inp').value=editorState.text;
+  // bar colors
+  const bc=document.getElementById('editor-bar-colors');
+  bc.innerHTML='';
+  PRESET_COLORS.forEach(c=>{
+    const b=document.createElement('div');
+    b.className='color-btn'+(c===editorState.barColor?' sel':'');
+    b.style.background=c;
+    if(c==='#ffffff')b.style.border='3px solid #ccc';
+    b.onclick=()=>{editorState.barColor=c;document.querySelectorAll('#editor-bar-colors .color-btn').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');updateEditorPreview()};
+    bc.appendChild(b);
+  });
+  // txt colors
+  const tc=document.getElementById('editor-txt-colors');
+  tc.innerHTML='';
+  PRESET_COLORS.forEach(c=>{
+    const b=document.createElement('div');
+    b.className='color-btn'+(c===editorState.txtColor?' sel':'');
+    b.style.background=c;
+    if(c==='#ffffff')b.style.border='3px solid #ccc';
+    b.onclick=()=>{editorState.txtColor=c;document.querySelectorAll('#editor-txt-colors .color-btn').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');updateEditorPreview()};
+    tc.appendChild(b);
+  });
+  updateEditorPreview();
+  document.getElementById('editor-overlay').classList.add('show');
+}
+function updateEditorPreview(){
+  const plate=inventory[editorState.plateIdx];
+  if(!plate)return;
+  const text=document.getElementById('editor-text-inp').value;
+  editorState.text=text;
+  const wrap=document.getElementById('editor-plate-wrap');
+  wrap.innerHTML='';
+  const div=document.createElement('div');
+  div.style.cssText='background:#111;padding:12px;border-radius:10px;width:100%;display:flex;justify-content:center';
+  // render mini plate with frame bar
+  const key=upgInventory.find(u=>u.id===editorState.lotId)?.lotKey||'plastic';
+  const inner=document.createElement('div');
+  inner.style.cssText=`position:relative;background:${key==='aluminium'?'#d0d8e0':key==='carbon'?'repeating-linear-gradient(45deg,#222 0,#222 3px,#333 3px,#333 6px)':'#fff'};border:3px solid #333;border-radius:6px;font-family:Rajdhani,sans-serif;font-weight:700;font-size:18px;padding:6px 12px 22px;letter-spacing:2px;color:${key==='carbon'?'#ddd':'#111'};white-space:nowrap`;
+  inner.textContent=getShortText(plate);
+  const bar=document.createElement('div');
+  bar.style.cssText=`position:absolute;bottom:0;left:0;right:0;height:18px;background:${editorState.barColor};border-radius:0 0 4px 4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:${editorState.txtColor};font-weight:700;letter-spacing:1px`;
+  bar.textContent=text||'ТЕКСТ';
+  inner.appendChild(bar);
+  div.appendChild(inner);
+  wrap.appendChild(div);
+}
+function cancelEditor(){document.getElementById('editor-overlay').classList.remove('show')}
+function applyEditor(){
+  const text=document.getElementById('editor-text-inp').value;
+  applyUpgradeToPlate(editorState.lotId, editorState.plateIdx, {frameText:text,barColor:editorState.barColor,txtColor:editorState.txtColor});
+  document.getElementById('editor-overlay').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GLOW EDITOR
+// ═══════════════════════════════════════════════════════════
+function openGlowEditor(){
+  const plate=inventory[glowEditorState.plateIdx];
+  if(!plate)return;
+  renderGlowCycles();
+  updateGlowPreview();
+  document.getElementById('glow-editor-overlay').classList.add('show');
+}
+function renderGlowCycles(){
+  const wrap=document.getElementById('glow-cycles-wrap');
+  wrap.innerHTML='';
+  glowEditorState.colors.forEach((c,i)=>{
+    const row=document.createElement('div');
+    row.className='glow-cycle-row';
+    const picker=document.createElement('input');
+    picker.type='color';picker.value=c;picker.className='color-picker-inp';
+    picker.oninput=()=>{glowEditorState.colors[i]=picker.value;updateGlowPreview()};
+    const del=document.createElement('button');
+    del.style.cssText='background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:4px 10px;color:var(--danger);cursor:pointer;font-family:Bebas Neue;letter-spacing:1px;font-size:13px';
+    del.textContent='УДАЛИТЬ';
+    del.onclick=()=>{glowEditorState.colors.splice(i,1);renderGlowCycles();updateGlowPreview()};
+    row.appendChild(picker);
+    const label=document.createElement('span');
+    label.style.cssText='font-size:12px;color:var(--muted);flex:1';label.textContent=`Цвет ${i+1}`;
+    row.appendChild(label);
+    if(glowEditorState.colors.length>1)row.appendChild(del);
+    wrap.appendChild(row);
+  });
+  document.getElementById('glow-add-btn').style.display=glowEditorState.colors.length>=3?'none':'flex';
+}
+function addGlowCycle(){
+  if(glowEditorState.colors.length>=3)return;
+  glowEditorState.colors.push('#ffffff');
+  renderGlowCycles();updateGlowPreview();
+}
+function updateGlowPreview(){
+  const plate=inventory[glowEditorState.plateIdx];
+  if(!plate)return;
+  const wrap=document.getElementById('glow-preview-wrap');
+  wrap.innerHTML='';
+  const outer=document.createElement('div');
+  outer.style.cssText='position:relative;display:inline-block';
+  const inner=document.createElement('div');
+  inner.style.cssText='background:#fff;border:3px solid #333;border-radius:6px;font-family:Rajdhani,sans-serif;font-weight:700;font-size:18px;padding:6px 14px;letter-spacing:2px;color:#111;white-space:nowrap';
+  inner.textContent=getShortText(plate);
+  const glow=document.createElement('div');
+  glow.style.cssText='position:absolute;bottom:-6px;left:4px;right:4px;height:5px;border-radius:3px;filter:blur(3px)';
+  const cols=glowEditorState.colors;
+  const keyframes=cols.map((c,i)=>`${Math.round(i/(cols.length)*100)}%{background:${c}}`).join('');
+  const kName=`glow_${Date.now()}`;
+  const styleEl=document.createElement('style');
+  styleEl.textContent=`@keyframes ${kName}{${keyframes}100%{background:${cols[0]}}}`;
+  document.head.appendChild(styleEl);
+  glow.style.animation=`${kName} 1.5s linear infinite`;
+  outer.appendChild(inner);outer.appendChild(glow);
+  wrap.appendChild(outer);
+}
+function cancelGlowEditor(){document.getElementById('glow-editor-overlay').classList.remove('show')}
+function applyGlowEditor(){
+  applyUpgradeToPlate(glowEditorState.lotId, glowEditorState.plateIdx, {glowColors:glowEditorState.colors});
+  document.getElementById('glow-editor-overlay').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PLATE BUILDING (main + inventory)
+// ═══════════════════════════════════════════════════════════
+function getShortText(item){
+  const v=item.vals;
+  if(item.country==='RU') return `${v.l1} ${v.d1}${v.d2}${v.d3} ${v.l2}${v.l3} | ${item.rc}`;
+  if(item.country==='UA') return `${item.rc} ${v.d1}${v.d2}${v.d3}${v.d4} ${v.l1}${v.l2}`;
+  if(item.country==='BY') return `${v.d1}${v.d2}${v.d3}${v.d4} ${v.l1}${v.l2}-${item.rc}`;
+  if(item.country==='KZ') return `${v.d1}${v.d2}${v.d3} ${v.l1}${v.l2}${v.l3} | ${item.rc}`;
+  return '';
+}
+
+function plateHTML(c, v, rc, emptyClass, forInventory=false, upgrades={}, opts={}){
+  // scheme chars shown when plate is empty (no spin yet)
+  const SCHEME={
+    RU:{l1:'А',d1:'0',d2:'0',d3:'0',l2:'А',l3:'А'},
+    UA:{d1:'0',d2:'0',d3:'0',d4:'0',l1:'А',l2:'А'},
+    BY:{d1:'0',d2:'0',d3:'0',d4:'0',l1:'А',l2:'А'},
+    KZ:{d1:'0',d2:'0',d3:'0',l1:'A',l2:'A',l3:'A'}
+  };
+  const isEmpty=emptyClass==='empty';
+  const D=(id,cls='')=>{
+    // in empty state always show scheme placeholder, never real vals
+    const ch=isEmpty ? (SCHEME[c][id]||'0') : (v[id]!=null?v[id]:(SCHEME[c][id]||'0'));
+    if(forInventory) return `<span class="dc ${cls}"><span>${ch}</span></span>`;
+    return `<span class="dc ${cls}" data-id="${id}"><span>${ch}</span></span>`;
+  };
+
+  // upgrades classes
+  let upgCls='';
+  if(upgrades.silicone)upgCls+=' upg-silicone';
+
+  // frame bar HTML
+  let frameBarHTML='';
+  if(upgrades.plastic||upgrades.aluminium||upgrades.carbon){
+    const bc=opts.barColor||'#CC0000';
+    const tc=opts.txtColor||'#ffffff';
+    const txt=opts.frameText||'';
+    frameBarHTML=`<div class="plate-frame-bar" style="background:${bc};color:${tc};display:flex">${txt}</div>`;
+  }
+
+  // glow HTML
+  let glowHTML='';
+  if(upgrades.glow){
+    const cols=opts.glowColors||['#ff0000','#0000ff','#00ff00'];
+    const kName=`ginv_${Math.random().toString(36).slice(2)}`;
+    const kf=cols.map((cl,i)=>`${Math.round(i/cols.length*100)}%{background:${cl}}`).join('');
+    glowHTML=`<style>@keyframes ${kName}{${kf}100%{background:${cols[0]}}}</style><div class="plate-glow" style="display:block;animation:${kName} 1.5s linear infinite"></div>`;
+  }
+
+  // shutter HTML
+  const shutterHTML=upgrades.shutter?`<div class="plate-shutter"><div class="shutter-l"></div><div class="shutter-r"></div></div>`:'';
+
+  // aluminium/carbon bg
+  let plateBg='';
+  if(upgrades.aluminium)plateBg='style="background:#d0d8e0"';
+  if(upgrades.carbon)plateBg='style="background:repeating-linear-gradient(45deg,#222 0,#222 3px,#333 3px,#333 6px)"';
+
+  let inner='';
+  if(c==='RU'){
+    inner=`<div class="plate plate-ru ${emptyClass}${upgCls}" ${plateBg}>
+      ${shutterHTML}${glowHTML}${frameBarHTML}
+      <div class="ru-body"><div class="ru-num-row">
+        ${D('l1','ru-dc letter')}<span class="ru-sp">&nbsp;</span>
+        ${D('d1','ru-dc')}${D('d2','ru-dc')}${D('d3','ru-dc')}
+        <span class="ru-sp">&nbsp;</span>${D('l2','ru-dc letter')}${D('l3','ru-dc letter')}
+      </div></div>
+      <div class="ru-divider"></div>
+      <div class="ru-right">
+        ${forInventory?`<span style="font-family:Rajdhani;font-weight:700;font-size:20px;color:#111">${rc}</span>`:
+        `<input class="ru-reg-inp" id="reg-inp" type="text" maxlength="3" inputmode="numeric" value="${rc}" placeholder="77" oninput="onRegInput(this)" onblur="onRegBlur(this)">`}
+        <div class="ru-flag-row"><div class="ru-flag-box"><div class="rf-w"></div><div class="rf-b"></div><div class="rf-r"></div></div><span class="ru-rus-txt">RUS</span></div>
+      </div>
+    </div>`;
+  } else if(c==='UA'){
+    inner=`<div class="plate plate-ua ${emptyClass}${upgCls}" ${plateBg}>
+      ${shutterHTML}${glowHTML}${frameBarHTML}
+      <div class="ua-strip"><div class="ua-flag-box"><div class="uf-b"></div><div class="uf-y"></div></div><span class="ua-code">UA</span></div>
+      <div class="ua-body">
+        ${forInventory?`<span style="font-family:Rajdhani;font-weight:700;font-size:34px;color:#111;letter-spacing:2px">${rc}</span>`:
+        `<input class="ua-reg-inp" id="reg-inp" type="text" maxlength="2" value="${rc}" placeholder="AA" oninput="onRegInput(this)" onblur="onRegBlur(this)">`}
+        <span class="ua-sp">&nbsp;</span>
+        ${D('d1','ua-dc')}${D('d2','ua-dc')}${D('d3','ua-dc')}${D('d4','ua-dc')}
+        <span class="ua-sp">&nbsp;</span>${D('l1','ua-dc letter')}${D('l2','ua-dc letter')}
+      </div>
+    </div>`;
+  } else if(c==='BY'){
+    inner=`<div class="plate plate-by ${emptyClass}${upgCls}" ${plateBg}>
+      ${shutterHTML}${glowHTML}${frameBarHTML}
+      <div class="by-left"><div class="by-flag-box"><div class="bf-r"></div><div class="bf-line"></div><div class="bf-g"></div></div><span class="by-code">BY</span></div>
+      <div class="by-body">
+        ${D('d1','by-dc')}${D('d2','by-dc')}${D('d3','by-dc')}${D('d4','by-dc')}
+        <span class="by-sp">&nbsp;</span>${D('l1','by-dc letter')}${D('l2','by-dc letter')}
+        <span class="by-dash">-</span>
+        ${forInventory?`<span style="font-family:Rajdhani;font-weight:700;font-size:30px;color:#111">${rc}</span>`:
+        `<input class="by-reg-inp" id="reg-inp" type="text" maxlength="1" inputmode="numeric" value="${rc}" placeholder="7" oninput="onRegInput(this)" onblur="onRegBlur(this)">`}
+      </div>
+    </div>`;
+  } else if(c==='KZ'){
+    inner=`<div class="plate plate-kz ${emptyClass}${upgCls}" ${plateBg}>
+      ${shutterHTML}${glowHTML}${frameBarHTML}
+      <div class="kz-body">
+        <div class="kz-flagcol"><span class="kz-flag">🇰🇿</span><span class="kz-kz">KZ</span></div>
+        <div class="kz-chars">
+          ${D('d1','kz-dc')}${D('d2','kz-dc')}${D('d3','kz-dc')}
+          <span class="kz-sp">&nbsp;</span>
+          ${D('l1','kz-dc letter')}${D('l2','kz-dc letter')}${D('l3','kz-dc letter')}
+          <div class="kz-vdiv"></div>
+          <div class="kz-right">
+            ${forInventory?`<span style="font-family:Rajdhani;font-weight:700;font-size:20px;color:#111">${rc}</span>`:
+            `<input class="kz-reg-inp" id="reg-inp" type="text" maxlength="2" inputmode="numeric" value="${rc}" placeholder="01" oninput="onRegInput(this)" onblur="onRegBlur(this)">`}
+            <span class="kz-kz">KZ</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+  return inner;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MAIN PLATE DISPLAY
+// ═══════════════════════════════════════════════════════════
+function updateRegionSub(rc){
+  const sub=document.getElementById('reg-sub');
+  const rname=REGIONS[country][rc];
+  if(rname){sub.textContent=`${rc} — ${rname}`;sub.className='region-sub ok'}
+  else if(rc){sub.textContent=`Регион «${rc}» не существует`;sub.className='region-sub err'}
+  else{sub.textContent='';sub.className='region-sub'}
+}
+function updatePlateUnlocked(){
+  const plate=document.querySelector('#plate-display .plate');
+  if(!plate)return;
+  plate.classList.toggle('empty',plateEmpty);
+}
+function buildPlate(){
+  const pd=document.getElementById('plate-display');
+  const ec=plateEmpty?'empty':'';
+  pd.innerHTML=plateHTML(country,vals,regionCode,ec,false,{},{});
+  updatePlateUnlocked();
+  updateRegionSub(regionCode);
+}
+function setSaveLocked(v){const b=document.getElementById('btn-save');if(b)b.classList.toggle('locked',v)}
+
+
+
+// ═══════════════════════════════════════════════════════════
+//  COUNTRY / VALS
+// ═══════════════════════════════════════════════════════════
+function selCountry(c){
+  playClick();
+  country=c;
+  document.querySelectorAll('.ctab').forEach(el=>el.classList.toggle('active',el.dataset.c===c));
+  regionCode='';plateEmpty=true;randomRegionUsed=false;spunAtLeastOnce=false;
+  clearVals();setSaveLocked(true);buildPlate();
+  document.getElementById('btn-share').classList.remove('visible');
+}
+function randomVals(){SLOTS_DEF[country].forEach(s=>{vals[s.id]=rnd(s.c)})}
+function clearVals(){SLOTS_DEF[country].forEach(s=>{vals[s.id]=null})}
+function randomAll(){
+  playClick();regionCode=rndKey(REGIONS[country]);randomRegionUsed=true;plateEmpty=true;spunAtLeastOnce=false;clearVals();
+  setSaveLocked(true);buildPlate();haptic('light');
+  document.getElementById('btn-share').classList.remove('visible');
+}
+function clearVals(){SLOTS_DEF[country].forEach(s=>{vals[s.id]=null})}
+function getPlateText(){
+  const v=vals;
+  if(country==='RU')return`${v.l1} ${v.d1}${v.d2}${v.d3} ${v.l2}${v.l3} | ${regionCode}`;
+  if(country==='UA')return`${regionCode} ${v.d1}${v.d2}${v.d3}${v.d4} ${v.l1}${v.l2}`;
+  if(country==='BY')return`${v.d1}${v.d2}${v.d3}${v.d4} ${v.l1}${v.l2}-${regionCode}`;
+  if(country==='KZ')return`${v.d1}${v.d2}${v.d3} ${v.l1}${v.l2}${v.l3} | ${regionCode}`;
+  return '';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SPIN
+// ═══════════════════════════════════════════════════════════
+function spinOnly(){
+  if(isSpinning)return;
+  if(!REGIONS[country][regionCode]){showToast('❌ СНАЧАЛА УКАЖИ РЕГИОН','error');haptic('warning');playError();return}
+  isSpinning=true;randomRegionUsed=false;plateEmpty=false;
+  setSaveLocked(false);
+  document.querySelectorAll('.btn').forEach(b=>b.disabled=true);
+  playClick();
+  const plateEl=document.querySelector('#plate-display .plate');
+  if(plateEl)plateEl.classList.remove('empty');
+
+  const finalVals={};
+  SLOTS_DEF[country].forEach(s=>{
+    if(luckPct>0){
+      // luck: re-roll luckPct% of the time for "better" (we just re-roll for variety)
+      const pool=[...s.c,...s.c.filter((_,i)=>i<Math.ceil(s.c.length*luckPct/100))];
+      finalVals[s.id]=rnd(pool);
+    } else {
+      finalVals[s.id]=rnd(s.c);
+    }
+  });
+
+  const dcEls=Array.from(document.querySelectorAll('#plate-display .dc[data-id]'));
+  dcEls.forEach(el=>{
+    const id=el.dataset.id;
+    const slotDef=SLOTS_DEF[country].find(s=>s.id===id);
+    if(!slotDef)return;
+    el.classList.add('spinning');
+    el._spinIv=setInterval(()=>{el.querySelector('span').textContent=rnd(slotDef.c);playTick()},70);
+  });
+  haptic('light');
+
+  const baseDelay=350,stagger=120;
+  dcEls.forEach((el,i)=>{
+    const id=el.dataset.id;
+    setTimeout(()=>{
+      clearInterval(el._spinIv);el.classList.remove('spinning');
+      el.querySelector('span').textContent=finalVals[id];vals[id]=finalVals[id];
+      el.classList.add('landing');playLand();haptic('light');
+      el.addEventListener('animationend',()=>el.classList.remove('landing'),{once:true});
+      if(i===dcEls.length-1){setTimeout(()=>{isSpinning=false;plateEmpty=false;spunAtLeastOnce=true;document.querySelectorAll('.btn').forEach(b=>b.disabled=false);setSaveLocked(false);haptic('medium');
+          // Show share button
+          document.getElementById('btn-share').classList.add('visible');
+        },200)}
+    },baseDelay+i*stagger);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  REGION INPUT
+// ═══════════════════════════════════════════════════════════
+function onRegInput(el){
+  let v=el.value.toUpperCase();
+  if(country==='RU'||country==='KZ'||country==='BY')v=v.replace(/[^0-9]/g,'');
+  if(country==='UA')v=v.replace(/[^A-ZАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯІЄ]/g,'');
+  el.value=v;regionCode=v;randomRegionUsed=false;
+  // DO NOT set plateEmpty=false here — only spin unlocks the plate
+  setSaveLocked(true);
+  updateRegionSub(v);
+  // just update region sub color without touching plate chars
+}
+function onRegBlur(el){
+  let v=el.value.toUpperCase();
+  if((country==='RU'||country==='KZ')&&v.length===1&&/^[0-9]$/.test(v)){v='0'+v;el.value=v}
+  regionCode=v;updateRegionSub(v);updatePlateUnlocked();
+  if(v&&!REGIONS[country][v])showPopup();
+  buildPlate();
+}
+function showPopup(){document.getElementById('popup-body').innerHTML=POPUP_HINTS[country];document.getElementById('popup').classList.add('show')}
+function closePopup(){document.getElementById('popup').classList.remove('show')}
+
+// ═══════════════════════════════════════════════════════════
+//  INVENTORY
+// ═══════════════════════════════════════════════════════════
+function saveToInventory(){
+  if(!spunAtLeastOnce){showToast('🎰 Сначала прокрути номер!','error');playError();haptic('warning');return}
+  if(randomRegionUsed){showToast('🎲 Прокрути номер после выбора региона','error');playError();haptic('warning');return}
+  if(inventory.length>=10){showToast('⚠️ ИНВЕНТАРЬ ПОЛОН (10/10)','error');playError();return}
+  const rname=REGIONS[country][regionCode];
+  if(!rname){showToast('❌ УКАЖИ ВЕРНЫЙ РЕГИОН','error');playError();return}
+  const text=getPlateText();
+  if(inventory.find(x=>x.text===text&&x.country===country)){showToast('НОМЕР УЖЕ СОХРАНЁН','error');playError();return}
+  inventory.push({country,vals:{...vals},rc:regionCode,rname,flag:COUNTRY_FLAGS[country],text,upgrades:{}});
+  renderInventory();showToast('✅ СОХРАНЕНО В ИНВЕНТАРЬ');playSuccess();haptic('success');saveGame();
+}
+
+function switchInvTab(tab){
+  invTab=tab;
+  document.querySelectorAll('.inv-tab').forEach((el,i)=>el.classList.toggle('active',(i===0&&tab==='plates')||(i===1&&tab==='upgrades')));
+  renderInventory();playClick();
+}
+
+function renderInventory(){
+  // render into both the old hidden list and the panel list
+  _renderInvInto('inv-list-panel');
+  // update count badge
+  const cnt=document.getElementById('bpanel-inv-count');
+  if(cnt) cnt.textContent=`${inventory.length} / 10`;
+}
+
+function _renderInvInto(listId){
+  const list=document.getElementById(listId);
+  if(!list) return;
+  // plates tab content
+  const platesHTML=()=>{
+    if(!inventory.length) return '<div class="inv-empty">У вас нету номерного знака</div>';
+    return inventory.map((item,i)=>{
+      const html=plateHTML(item.country,item.vals,item.rc,'',true,item.upgrades||{},{frameText:item.frameText,barColor:item.barColor,txtColor:item.txtColor,glowColors:item.glowColors});
+      return `<div style="position:relative;width:100%;animation:fadeIn .3s ease">
+        ${html.replace('class="plate ','class="inv-plate-item plate ')}
+        <button class="inv-plate-del" onclick="removeFromInventory(${i})">✕</button>
+      </div>`;
+    }).join('');
+  };
+  // upgrades tab content
+  const upgsHTML=()=>{
+    if(!upgInventory.length) return '<div class="inv-empty">У вас отсутствуют улучшения</div>';
+    return '<div class="inv-upgrades">'+upgInventory.map((upg,i)=>{
+      const lot=LOTS[upg.lotKey];
+      const applied=upg.applied?`<div class="inv-upg-on">✓ Применено</div>`:'';
+      return `<div class="inv-upg-item" onclick="openApplyUpgrade(${upg.id})">
+        <div class="inv-upg-preview">${shopLotPreviewHTML(upg.lotKey)}</div>
+        <div class="inv-upg-name">${lot.name}</div>
+        ${applied}
+      </div>`;
+    }).join('')+'</div>';
+  };
+
+  // Build full content with tabs inside panel
+  list.innerHTML=`
+    <div class="inv-tabs" style="margin-bottom:10px">
+      <div class="inv-tab ${invTab==='plates'?'active':''}" onclick="switchInvTab('plates')">🚗 НОМЕРА</div>
+      <div class="inv-tab ${invTab==='upgrades'?'active':''}" onclick="switchInvTab('upgrades')">⚙️ УЛУЧШЕНИЯ</div>
+    </div>
+    <div class="inv-header">
+      <span class="inv-title">${invTab==='plates'?'НОМЕРНЫЕ ЗНАКИ':'УЛУЧШЕНИЯ'}</span>
+      <span class="inv-count">${invTab==='plates'?inventory.length+' / 10':upgInventory.length}</span>
+    </div>
+    <div id="${listId}-inner" style="display:flex;flex-direction:column;gap:8px">${invTab==='plates'?platesHTML():upgsHTML()}</div>
+  `;
+
+  // add click for flip/shutter
+  if(invTab==='plates'){
+    setTimeout(()=>{
+      document.querySelectorAll(`#${listId} .inv-plate-item`).forEach((el,i)=>{
+        const item=inventory[i];
+        if(!item)return;
+        if(item.upgrades?.flip){
+          el.addEventListener('click',()=>{el.style.animation='';requestAnimationFrame(()=>{el.style.animation='flip360 .8s ease'});setTimeout(()=>el.style.animation='',850)});
+        }
+        if(item.upgrades?.shutter){
+          el.addEventListener('click',()=>{
+            const sl=el.querySelector('.shutter-l'),sr=el.querySelector('.shutter-r');
+            if(!sl)return;
+            if(sl.style.width==='50%'){sl.style.width='0';sr.style.width='0'}
+            else{sl.style.width='50%';sr.style.width='50%'}
+          });
+        }
+      });
+    },50);
+  }
+}
+
+// ── BOTTOM PANELS ──
+function openBPanel(id){
+  playClick();haptic('light');
+  if(id==='inv'){
+    renderInventory();
+    document.getElementById('bpanel-inv').classList.add('show');
+    document.getElementById('bnav-inv').classList.add('active');
+  } else if(id==='upg'){
+    // inject shop content into upgrades panel
+    const body=document.getElementById('bpanel-upg-body');
+    if(body){
+      const shopEl=document.querySelector('.shop-sheet');
+      // Clone shop groups content only
+      const groups=document.querySelectorAll('#shop-overlay .shop-group');
+      body.innerHTML='';
+      // Check if plastic owned for lock state
+      const hasPlastic=!!upgInventory.find(u=>u.lotKey==='plastic');
+      groups.forEach(g=>{
+        const clone=g.cloneNode(true);
+        // re-wire lock state
+        ['aluminium','carbon'].forEach(key=>{
+          const lot=clone.querySelector(`.shop-lot[onclick="openLotDetail('${key}')"]`);
+          if(lot) lot.classList.toggle('lot-locked',!hasPlastic);
+        });
+        body.appendChild(clone);
+      });
+      // update coins display
+      const coinsEl=document.getElementById('bpanel-upg-coins');
+      if(coinsEl) coinsEl.textContent=coins;
+    }
+    document.getElementById('bpanel-upg').classList.add('show');
+    document.getElementById('bnav-upg').classList.add('active');
+  }
+}
+
+function closeBPanel(id){
+  document.getElementById(`bpanel-${id}`).classList.remove('show');
+  document.getElementById(`bnav-${id}`).classList.remove('active');
+}
+
+function closeBPanelIfBg(e,id){
+  if(e.target===document.getElementById(`bpanel-${id}`)) closeBPanel(id);
+}
+
+// ── PLATE PASS ──
+function openPlatePass(){
+  playClick();haptic('warning');
+  showToast('⏳ Скоро...','error');
+}
+
+function shopLotPreviewHTML(key){
+  if(key==='silicone')return'<div class="mini-plate silicone" style="font-size:11px;padding:3px 6px">А 555 АА</div>';
+  if(key==='plastic')return'<div class="mini-plate plastic-preview" style="font-size:11px;padding:3px 6px 16px">А 555 АА<div class="plastic-bar">ТЕКСТ</div></div>';
+  if(key==='aluminium')return'<div class="mini-plate alum-preview plastic-preview" style="font-size:11px;padding:3px 6px 16px">А 555 АА<div class="plastic-bar">ТЕКСТ</div></div>';
+  if(key==='carbon')return'<div class="mini-plate carbon-preview plastic-preview" style="font-size:11px;padding:3px 6px 16px;color:#ddd">А 555 АА<div class="plastic-bar">ТЕКСТ</div></div>';
+  if(key==='flip')return'<div class="mini-plate flip-anim" style="font-size:11px;padding:3px 6px">А 555 АА</div>';
+  if(key==='shutter')return'<div class="shutter-preview-wrap mini-plate" style="font-size:11px;padding:3px 6px">А 555 АА<div class="sp-l"></div><div class="sp-r"></div></div>';
+  if(key==='glow')return'<div class="mini-plate glow-anim" style="font-size:11px;padding:3px 6px">А 555 АА</div>';
+  return '';
+}
+
+function removeFromInventory(i){inventory.splice(i,1);renderInventory();haptic('light');saveGame()}
+
+// ═══════════════════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════════════════
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast show';
+  if(type==='error')t.classList.add('error');
+  if(type==='gold')t.classList.add('gold');
+  setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SHARE PLATE
+// ═══════════════════════════════════════════════════════════
+function sharePlate(){
+  if(!spunAtLeastOnce||plateEmpty){showToast('🎰 Сначала прокрути номер!','error');return}
+  haptic('light');playClick();
+  openShareModal();
+}
+
+function getShareText(){
+  const plateText=getPlateText();
+  const flag=COUNTRY_FLAGS[country];
+  return `${flag} Выбил номер ${plateText}!\nПопробуй и ты → @cardrop_game_bot`;
+}
+
+// ── Share Modal ──
+function openShareModal(){
+  // Generate image
+  const dataUrl=generatePlateImage();
+
+  let modal=document.getElementById('share-modal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='share-modal';
+    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:800;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px)';
+    document.body.appendChild(modal);
+  }
+
+  const shareText=getShareText();
+
+  modal.innerHTML=`
+    <div style="background:linear-gradient(160deg,#1a1a2e,#16213e);border:1px solid rgba(91,141,238,.3);border-radius:22px 22px 0 0;padding:20px 18px 36px;width:100%;max-width:480px;animation:slideUp .3s cubic-bezier(.25,.46,.45,.94)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-family:'Bebas Neue';font-size:18px;letter-spacing:2px;color:#fff">📤 ПОДЕЛИТЬСЯ</div>
+        <button onclick="closeShareModal()" style="background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer">✕</button>
+      </div>
+      <img id="share-preview-img" src="${dataUrl}" style="width:100%;border-radius:12px;border:1px solid rgba(255,255,255,.1);margin-bottom:14px;display:block"/>
+      <div style="background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:14px">${shareText.replace(/\n/g,'<br>')}</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button onclick="doShareViaBotTelegram()" style="width:100%;padding:13px;background:linear-gradient(135deg,#229ED9,#1a7fc4);border:none;border-radius:12px;font-family:'Bebas Neue';font-size:16px;letter-spacing:2px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+          <span>✈️</span> ПОДЕЛИТЬСЯ В TELEGRAM
+        </button>
+      </div>
+    </div>`;
+  modal.style.display='flex';
+
+  modal.onclick=(e)=>{if(e.target===modal)closeShareModal()};
+}
+
+function closeShareModal(){
+  const m=document.getElementById('share-modal');
+  if(m)m.style.display='none';
+}
+
+function doShareViaBotTelegram(){
+  const shareText=getShareText();
+  const dataUrl=generatePlateImage();
+  const tg=window.Telegram?.WebApp;
+
+  closeShareModal();
+
+  if(tg){
+    try{
+      // Send action+text+image to bot backend via sendData
+      const payload=JSON.stringify({action:'share_plate',text:shareText,image:dataUrl});
+      tg.sendData(payload);
+      showToast('✅ Отправил, пересылай другу!');
+      haptic('success');
+      return;
+    }catch(e){}
+    // Fallback: open share link
+    try{
+      tg.openTelegramLink(`https://t.me/share/url?url=https%3A%2F%2Ft.me%2Fcardrop_game_bot&text=${encodeURIComponent(shareText)}`);
+      showToast('✅ Отправил, пересылай другу!');
+      haptic('success');
+      return;
+    }catch(e){}
+  }
+  window.open(`https://t.me/share/url?url=https%3A%2F%2Ft.me%2Fcardrop_game_bot&text=${encodeURIComponent(shareText)}`,'_blank');
+  showToast('✅ Отправил, пересылай другу!');
+}
+
+// ── Canvas image generation ──
+function generatePlateImage(){
+  const W=900,H=420;
+  const canvas=document.createElement('canvas');
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+
+  // Background — same as game
+  const grad=ctx.createLinearGradient(0,0,W,H);
+  grad.addColorStop(0,'#0d0d17');
+  grad.addColorStop(0.5,'#111118');
+  grad.addColorStop(1,'#0d0d17');
+  ctx.fillStyle=grad;
+  ctx.fillRect(0,0,W,H);
+
+  // Subtle grid
+  ctx.strokeStyle='rgba(91,141,238,0.06)';
+  ctx.lineWidth=1;
+  for(let x=0;x<=W;x+=44){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=0;y<=H;y+=44){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+
+  // Radial glow center
+  const glow=ctx.createRadialGradient(W/2,H/2-20,0,W/2,H/2-20,260);
+  glow.addColorStop(0,'rgba(91,141,238,0.20)');
+  glow.addColorStop(1,'rgba(91,141,238,0)');
+  ctx.fillStyle=glow;ctx.fillRect(0,0,W,H);
+
+  // Top accent line
+  const lineGrad=ctx.createLinearGradient(0,0,W,0);
+  lineGrad.addColorStop(0,'rgba(91,141,238,0)');
+  lineGrad.addColorStop(0.5,'rgba(91,141,238,0.8)');
+  lineGrad.addColorStop(1,'rgba(91,141,238,0)');
+  ctx.strokeStyle=lineGrad;ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(W,2);ctx.stroke();
+
+  // Top label
+  ctx.save();
+  ctx.font='900 18px Arial, sans-serif';
+  ctx.fillStyle='rgba(160,170,220,0.55)';
+  ctx.textAlign='center';ctx.textBaseline='top';
+  ctx.letterSpacing='6px';
+  ctx.fillText('🚗  НОМЕРА — CARDROP', W/2, 18);
+  ctx.restore();
+
+  // Draw the plate
+  drawPlateOnCanvas(ctx,W,H);
+
+  // Bottom accent line
+  ctx.strokeStyle=lineGrad;ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(0,H-2);ctx.lineTo(W,H-2);ctx.stroke();
+
+  // Bot handle
+  ctx.save();
+  ctx.font='bold 17px Arial, sans-serif';
+  ctx.fillStyle='rgba(91,141,238,0.85)';
+  ctx.textAlign='center';ctx.textBaseline='bottom';
+  ctx.fillText('@cardrop_game_bot', W/2, H-10);
+  ctx.restore();
+
+  return canvas.toDataURL('image/png',1.0);
+}
+
+function drawPlateRoundedRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);
+  ctx.closePath();
+}
+
+function drawPlateOnCanvas(ctx,W,H){
+  const v=vals;
+  // Wider plates for better readability
+  const PW=country==='RU'?520:500;
+  const PH=120;
+  const px=(W-PW)/2;
+  const py=(H-PH)/2+10;
+  const r=10;
+
+  // Drop shadow
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,0.75)';
+  ctx.shadowBlur=40;
+  ctx.shadowOffsetY=10;
+  drawPlateRoundedRect(ctx,px,py,PW,PH,r);
+  ctx.fillStyle='#ffffff';
+  ctx.fill();
+  ctx.restore();
+
+  // Plate border
+  ctx.save();
+  drawPlateRoundedRect(ctx,px,py,PW,PH,r);
+  ctx.fillStyle='#ffffff';ctx.fill();
+  ctx.strokeStyle='#1a1a1a';ctx.lineWidth=5;ctx.stroke();
+  ctx.restore();
+
+  if(country==='RU') drawRuPlateCanvas(ctx,v,px,py,PW,PH);
+  else if(country==='UA') drawUaPlateCanvas(ctx,v,px,py,PW,PH);
+  else if(country==='BY') drawByPlateCanvas(ctx,v,px,py,PW,PH);
+  else if(country==='KZ') drawKzPlateCanvas(ctx,v,px,py,PW,PH);
+}
+
+function drawRuPlateCanvas(ctx,v,px,py,PW,PH){
+  const r=10;
+  ctx.save();
+  drawPlateRoundedRect(ctx,px,py,PW,PH,r);
+  ctx.clip();
+
+  const DIVW=72;
+  const divX=px+PW-DIVW;
+  const panelCX=divX+DIVW/2;
+
+  // Vertical divider
+  ctx.fillStyle='#111';ctx.fillRect(divX,py+8,2.5,PH-16);
+
+  // Main number: Л ЦЦЦ ЛЛ
+  const numText=`${v.l1} ${v.d1}${v.d2}${v.d3} ${v.l2}${v.l3}`;
+  ctx.font='bold 80px "Rajdhani","Arial Black",sans-serif';
+  ctx.fillStyle='#111';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(numText, px+(PW-DIVW)/2, py+PH/2+1);
+
+  // Right panel layout (exact copy of HTML):
+  // Row 1 — region code (upper, ~1/3 from top)
+  ctx.font='bold 26px "Rajdhani",Arial,sans-serif';
+  ctx.fillStyle='#111';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(regionCode, panelCX, py+28);
+
+  // Row 2 — flag + RUS on same line, centered together
+  const fStripe=7, fw=28, fTotalW=fw+4+18; // flag + gap + "RUS"
+  const rowY=py+PH-20;
+  const startX=panelCX - fTotalW/2;
+
+  // Flag stripes
+  ctx.fillStyle='#fff';ctx.strokeStyle='#ddd';ctx.lineWidth=0.5;
+  ctx.fillRect(startX,rowY-fStripe*1.5,fw,fStripe);ctx.strokeRect(startX,rowY-fStripe*1.5,fw,fStripe);
+  ctx.fillStyle='#003DA5';ctx.fillRect(startX,rowY-fStripe*0.5,fw,fStripe);
+  ctx.fillStyle='#CC0000';ctx.fillRect(startX,rowY+fStripe*0.5,fw,fStripe);
+
+  // RUS text right of flag, vertically centered on flag
+  ctx.font='bold 11px Arial,sans-serif';
+  ctx.fillStyle='#111';ctx.textAlign='left';ctx.textBaseline='middle';
+  ctx.fillText('RUS', startX+fw+4, rowY);
+
+  ctx.restore();
+}
+
+function drawUaPlateCanvas(ctx,v,px,py,PW,PH){
+  const r=10;
+  ctx.save();
+  drawPlateRoundedRect(ctx,px,py,PW,PH,r);
+  ctx.clip();
+
+  const SW=54; // blue strip width
+
+  // Blue left strip
+  ctx.fillStyle='#003DA5';
+  ctx.fillRect(px,py,SW,PH);
+
+  // Ukraine flag on strip: blue top, yellow bottom
+  const ffx=px+9,ffy=py+18,ffw=34,ffh=28;
+  ctx.fillStyle='#005BBB';ctx.fillRect(ffx,ffy,ffw,ffh/2);
+  ctx.fillStyle='#FFD500';ctx.fillRect(ffx,ffy+ffh/2,ffw,ffh/2);
+  // thin border around flag
+  ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=0.5;
+  ctx.strokeRect(ffx,ffy,ffw,ffh);
+
+  // UA text
+  ctx.font='bold 13px Arial, sans-serif';
+  ctx.fillStyle='#ffffff';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.letterSpacing='1px';
+  ctx.fillText('UA',px+SW/2,py+PH-15);
+
+  // Divider line after strip
+  ctx.fillStyle='rgba(0,0,0,0.15)';ctx.fillRect(px+SW,py,1.5,PH);
+
+  // Number text: AA ЦЦЦЦ ЛЛ
+  const numText=`${regionCode} ${v.d1}${v.d2}${v.d3}${v.d4} ${v.l1}${v.l2}`;
+  ctx.font='bold 72px "Rajdhani", "Arial Black", sans-serif';
+  ctx.fillStyle='#111';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.letterSpacing='0px';
+  ctx.fillText(numText,px+SW+(PW-SW)/2,py+PH/2+2);
+
+  ctx.restore();
+}
+
+function drawByPlateCanvas(ctx,v,px,py,PW,PH){
+  const r=10;
+  ctx.save();
+  drawPlateRoundedRect(ctx,px,py,PW,PH,r);
+  ctx.clip();
+
+  const SW=54;
+  const colCX=px+SW/2;
+
+  // Left column border (white bg, same as plate)
+  ctx.strokeStyle='#ddd';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(px+SW,py);ctx.lineTo(px+SW,py+PH);ctx.stroke();
+
+  // Real Belarusian flag: red (top, 2/3) + white ornament strip (thin) + green (1/3)
+  // Positioned centered in column
+  const ffw=34, ffh=30;
+  const ffx=colCX - ffw/2;
+  const ffy=py + (PH - ffh)/2 - 4; // slightly above center to leave room for BY below
+
+  const redH=Math.round(ffh*0.66);
+  const whiteH=Math.round(ffh*0.07);
+  const greenH=ffh - redH - whiteH;
+
+  // Red top
+  ctx.fillStyle='#CC0000';ctx.fillRect(ffx,ffy,ffw,redH);
+  // White thin stripe
+  ctx.fillStyle='#ffffff';ctx.fillRect(ffx,ffy+redH,ffw,whiteH);
+  // Green bottom
+  ctx.fillStyle='#009B3A';ctx.fillRect(ffx,ffy+redH+whiteH,ffw,greenH);
+
+  // Decorative ornament pattern (simplified red diamonds on white)
+  ctx.fillStyle='#CC0000';
+  const ornW=ffw/7;
+  for(let i=0;i<3;i++){
+    ctx.fillRect(ffx+i*ornW*2+1,ffy+redH,ornW,whiteH);
+  }
+
+  // BY text below flag
+  ctx.font='bold 13px Arial,sans-serif';
+  ctx.fillStyle='#111';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('BY', colCX, py+PH-12);
+
+  // Number: ЦЦЦЦ ЛЛ-Р
+  const numText=`${v.d1}${v.d2}${v.d3}${v.d4} ${v.l1}${v.l2}-${regionCode}`;
+  ctx.font='bold 68px "Rajdhani","Arial Black",sans-serif';
+  ctx.fillStyle='#111';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(numText, px+SW+(PW-SW)/2, py+PH/2+2);
+
+  ctx.restore();
+}
+
+function drawKzPlateCanvas(ctx,v,px,py,PW,PH){
+  const r=10;
+  ctx.save();
+  drawPlateRoundedRect(ctx,px,py,PW,PH,r);
+  ctx.clip();
+
+  const SW=50;  // left flag column width — WHITE background
+  const RW=52;  // right region column width
+
+  // Left column — white background (same as plate), just draw border
+  ctx.strokeStyle='#ddd';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(px+SW,py);ctx.lineTo(px+SW,py+PH);ctx.stroke();
+
+  // KZ flag emoji centered in left column
+  const colCX=px+SW/2;
+  ctx.font='24px Arial,sans-serif';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('🇰🇿', colCX, py+PH/2-6);
+
+  // KZ text below flag
+  ctx.font='bold 11px Arial,sans-serif';
+  ctx.fillStyle='#111';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('KZ', colCX, py+PH-12);
+
+  // Right region divider
+  ctx.strokeStyle='#bbb';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(px+PW-RW,py+10);ctx.lineTo(px+PW-RW,py+PH-10);ctx.stroke();
+
+  // Region code + KZ in right col — both centered vertically together
+  const rcX=px+PW-RW/2;
+  ctx.font='bold 26px "Rajdhani",Arial,sans-serif';
+  ctx.fillStyle='#111';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(regionCode, rcX, py+PH/2-8);
+  ctx.font='bold 12px Arial,sans-serif';
+  ctx.fillText('KZ', rcX, py+PH/2+14);
+
+  // Main number: ЦЦЦ ЛЛЛ
+  const midX=px+SW+(PW-SW-RW)/2;
+  const numText=`${v.d1}${v.d2}${v.d3} ${v.l1}${v.l2}${v.l3}`;
+  ctx.font='bold 66px "Rajdhani","Arial Black",sans-serif';
+  ctx.fillStyle='#111';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(numText, midX, py+PH/2+2);
+
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  REFERRAL SYSTEM
+// ═══════════════════════════════════════════════════════════
+const BOT_USERNAME='cardrop_game_bot';
+
+function getRefLink(){
+  // get Telegram user id if available for personalised ref link
+  let userId='';
+  try{userId=window.Telegram?.WebApp?.initDataUnsafe?.user?.id||''}catch(e){}
+  const param=userId?`ref_${userId}`:'share';
+  return `https://t.me/${BOT_USERNAME}?start=${param}`;
+}
+
+function openRefPopup(){
+  playClick();
+  updateRefUI();
+  document.getElementById('ref-overlay').classList.add('show');
+}
+function closeRefPopup(){
+  document.getElementById('ref-overlay').classList.remove('show');
+}
+
+function updateRefUI(){
+  const count=Math.min(refCount,5);
+  document.getElementById('ref-count').textContent=count;
+  document.getElementById('ref-bar').style.width=`${(count/5)*100}%`;
+  // badge on button
+  const badge=document.getElementById('ref-friends-badge');
+  if(count>0&&count<5){badge.style.display='flex';badge.textContent=`${count}/5`}
+  else if(count>=5&&!refRewarded){badge.style.display='flex';badge.textContent='✓'}
+  else{badge.style.display='none'}
+}
+
+function shareRefLink(){
+  playClick();haptic('light');
+  const link=getRefLink();
+  const text=`🚗 Играю в CarDrop — генератор номерных знаков! Регионы, рулетка, улучшения. Заходи!\n\n${link}`;
+  try{
+    // Try Telegram share first
+    if(window.Telegram?.WebApp){
+      Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent('🚗 Играю в CarDrop — генератор номерных знаков! Регионы, рулетка, улучшения. Заходи!')}`);
+      return;
+    }
+  }catch(e){}
+  // Fallback: copy to clipboard
+  navigator.clipboard.writeText(text).catch(()=>{});
+  showToast('Ссылка скопирована!');
+}
+
+// simulate friend joined (called by bot backend via tg.sendData or manually for testing)
+function onFriendJoined(){
+  if(refRewarded)return;
+  refCount=Math.min(refCount+1,5);
+  updateRefUI();
+  saveGame();
+  if(refCount>=5&&!refRewarded){
+    refRewarded=true;
+    addCoins(10000);
+    playCoins();haptic('success');
+    showToast('🎉 +10 000 монет за 5 друзей!','gold');
+    saveGame();
+  }
+}
+
+function showRewardPopup(){
+  playCoins();haptic('success');
+  // reuse ref popup but show reward state
+  document.getElementById('ref-overlay').classList.add('show');
+  updateRefUI();
+  // swap content temporarily
+  const sheet=document.querySelector('.ref-sheet');
+  const orig=sheet.innerHTML;
+  sheet.innerHTML=`
+    <span class="ref-icon">🎉</span>
+    <div class="ref-title">ПОЗДРАВЛЯЕМ!<br><span>+10 000 МОНЕТ</span></div>
+    <div class="ref-desc">Ты пригласил 5 друзей в игру.<br>Монеты зачислены на баланс!</div>
+    <div class="ref-reward">🪙 10 000 МОНЕТ ПОЛУЧЕНО</div>
+    <button class="btn-ref-close" onclick="document.getElementById('ref-overlay').classList.remove('show')">ОТЛИЧНО!</button>
+  `;
+  // restore original after close
+  document.querySelector('.btn-ref-close').addEventListener('click',()=>{
+    sheet.innerHTML=orig;
+  },{once:true});
+}
+
+// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+const SAVE_KEY='plates_game_v1';
+
+function saveGame(){
+  try{
+    const data={
+      coins,
+      inventory,
+      upgInventory,
+      roulLastTime,
+      refCount,
+      refRewarded,
+      refShownOnStart,
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  }catch(e){}
+}
+
+function loadGame(){
+  try{
+    const raw=localStorage.getItem(SAVE_KEY);
+    if(!raw)return false;
+    const data=JSON.parse(raw);
+    if(typeof data.coins==='number') coins=data.coins;
+    if(Array.isArray(data.inventory)) inventory=data.inventory;
+    if(Array.isArray(data.upgInventory)) upgInventory=data.upgInventory;
+    if(typeof data.roulLastTime==='number') roulLastTime=data.roulLastTime;
+    if(typeof data.refCount==='number') refCount=data.refCount;
+    if(typeof data.refRewarded==='boolean') refRewarded=data.refRewarded;
+    if(typeof data.refShownOnStart==='boolean') refShownOnStart=data.refShownOnStart;
+    return true;
+  }catch(e){return false}
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded',()=>{
+  // Telegram Mini App setup
+  if(window.Telegram?.WebApp){
+    const tg=Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+    tg.disableClosingConfirmation?.();
+    if(tg.colorScheme==='light'){
+      document.documentElement.style.setProperty('--bg','#f0f0f5');
+    }
+    try{tg.setHeaderColor?.('#131320')}catch(e){}
+    try{tg.setBackgroundColor?.('#111118')}catch(e){}
+  }
+
+  // load saved game — give starting coins only for new players
+  const hasSave=loadGame();
+  if(!hasSave) coins=500;
+
+  // init plate state fresh
+  regionCode='';plateEmpty=true;spunAtLeastOnce=false;clearVals();
+  buildPlate();renderInventory();drawWheel(0);
+  updateCoinsUI();
+  updateRefUI();
+
+  // ── CHECK BOT REWARD SIGNAL ──
+  // Bot sends user to: https://t.me/cardrop_game_bot?start=reward_ref
+  // WebApp receives this as startParam
+  try{
+    const tg=window.Telegram?.WebApp;
+    const param = tg?.initDataUnsafe?.start_param || '';
+
+    if(param==='reward_ref' && !refRewarded){
+      // Bot confirmed 5 referrals — award coins
+      refRewarded=true;
+      refCount=5;
+      addCoins(10000);
+      updateRefUI();
+      saveGame();
+      // Show reward popup after short delay
+      setTimeout(()=>{
+        showRewardPopup();
+      }, 1000);
+    } else if(param.startsWith('friend_')){
+      // Bot sends friend count update: friend_3, friend_5 etc
+      const n=parseInt(param.replace('friend_',''));
+      if(!isNaN(n) && n > refCount){
+        refCount=n;
+        updateRefUI();
+        saveGame();
+        if(n>=5 && !refRewarded){
+          refRewarded=true;
+          addCoins(10000);
+          saveGame();
+          setTimeout(()=>showRewardPopup(), 1000);
+        }
+      }
+    }
+  }catch(e){}
+
+  // show referral popup on first ever launch
+  if(!refShownOnStart){
+    refShownOnStart=true;
+    saveGame();
+    setTimeout(()=>openRefPopup(), 800);
+  }
+
+  // save on page hide/unload
+  window.addEventListener('pagehide', saveGame);
+  window.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveGame()});
+});
+</script>
+</body>
+</html>
